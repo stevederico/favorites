@@ -1,6 +1,6 @@
 import { isSubscriber } from "@stevederico/skateboard-ui/Utilities";
 import { useEffect, useRef, useState } from "react";
-import { getCurrentUser, getCookie, timestampToString, getBackendURL } from '@stevederico/skateboard-ui/Utilities'
+import { getCurrentUser, getCookie, timestampToString, getBackendURL } from '@stevederico/skateboard-ui/Utilities';
 
 
 import 'leaflet/dist/leaflet.css';
@@ -10,6 +10,7 @@ export default function MapView() {
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const [favorites, setFavorites] = useState([]);
+
 
   async function getFavorites(){
     try {
@@ -89,7 +90,11 @@ export default function MapView() {
 
   return (
     <div className="w-screen h-screen">
+
       <div ref={mapRef} className="w-full h-full"></div>
+    
+      
+
     </div>
   );
 }

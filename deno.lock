@@ -1,6 +1,7 @@
 {
   "version": "4",
   "specifiers": {
+    "npm:@radix-ui/react-dialog@^1.1.6": "1.1.6_react@19.0.0_react-dom@19.0.0__react@19.0.0",
     "npm:@stevederico/skateboard-ui@~0.2.7": "0.2.7_react@19.0.0_react-dom@19.0.0__react@19.0.0_tailwindcss@4.0.0",
     "npm:@tailwindcss/vite@^4.0.7": "4.0.14_vite@6.2.2__lightningcss@1.29.2_lightningcss@1.29.2",
     "npm:@vitejs/plugin-react-swc@^3.8.0": "3.8.0_vite@6.2.2__lightningcss@1.29.2",
@@ -1048,6 +1049,7 @@
   "workspace": {
     "packageJson": {
       "dependencies": [
+        "npm:@radix-ui/react-dialog@^1.1.6",
         "npm:@stevederico/skateboard-ui@~0.2.7",
         "npm:@tailwindcss/vite@^4.0.7",
         "npm:@vitejs/plugin-react-swc@^3.8.0",

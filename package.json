@@ -10,6 +10,7 @@
     "prod": "vite build --mode production;"
   },
   "dependencies": {
+    "@radix-ui/react-dialog": "^1.1.6",
     "@stevederico/skateboard-ui": "^0.2.7",
     "leaflet": "^1.9.4",
     "react": "^19.0.0",
