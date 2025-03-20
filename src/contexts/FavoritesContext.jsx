@@ -63,8 +63,27 @@ export function FavoritesProvider({ children }) {
     }
   }
 
+  async function updateFavorite(_id, updates) {
+    try {
+      const response = await fetch(`${getBackendURL()}/favorites`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${getCookie('token')}`
+        },
+        body: JSON.stringify({ _id, ...updates })
+      });
+      const updatedFavorite = await response.json();
+      setFavorites(favorites.map(f => f._id === _id ? updatedFavorite : f));
+      return updatedFavorite;
+    } catch (error) {
+      console.error('Error updating favorite:', error);
+      return null;
+    }
+  }
+
   return (
-    <FavoritesContext.Provider value={{ favorites, getFavorites, addFavorite, removeFavorite }}>
+    <FavoritesContext.Provider value={{ favorites, getFavorites, addFavorite, removeFavorite, updateFavorite }}>
       {children}
     </FavoritesContext.Provider>
   );

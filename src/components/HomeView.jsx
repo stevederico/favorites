@@ -15,13 +15,12 @@ export default function HomeView() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {favorites.map(favorite => (
           <div key={favorite._id} className="bg-accent rounded-lg shadow-md p-4 flex flex-col">
-            <h3 className="font-semibold text-lg">{favorite.name || favorite.venue}</h3>
-            {favorite.address && <p className="mt-1">{favorite.address}</p>}
-            {favorite.deal_details && <p className="mt-2">{favorite.deal_details}</p>}
-            {favorite.price && <p>Price: {favorite.price}</p>}
+            <h3 className="font-semibold text-lg">{favorite.title}</h3>
+            {favorite.address && <p className="mt-1 text-sm">{favorite.address}</p>}
+            {favorite.notes && <p className="mt-2">{favorite.notes}</p>}
             <div className="flex justify-between items-center mt-4">
               <Link 
-                to={`/map?lat=${favorite.gps?.split(',')[0]}&lng=${favorite.gps?.split(',')[1]}`} 
+                to={`/app/map?lat=${favorite.coordinates?.lat}&lng=${favorite.coordinates?.long}`} 
                 className="hover:opacity-80"
               >
                 View on Map
