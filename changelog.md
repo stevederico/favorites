@@ -31,12 +31,14 @@ fixed mapView centering
 identical searchBars
 fixing pop-ups
 show other profile favorites
+working profile url /app/@frank
+0.1.0
 
-- fix number of favorites on profiles
 - fix profile map url
-- setup profile map url
-- full social feed, fix just now
 
+
+- full social feed, fix just now
+- fix number of favorites on profiles
 
 
 

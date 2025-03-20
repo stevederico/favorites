@@ -88,6 +88,7 @@ const App = () => {
             <Route path="map" element={<MapView />} />
             <Route path="settings" element={<SettingsView />} />
             <Route path="stripe" element={<StripeView />} />
+            <Route path=":username" element={<HomeView isProfileView={true} />} />
           </Route>
         </Route>
         <Route path="/" element={<LandingView />} />

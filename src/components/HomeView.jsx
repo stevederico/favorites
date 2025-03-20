@@ -1,11 +1,11 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useFavorites } from '../contexts/FavoritesContext';
 import { Search, User, MapPin, Clock, Heart, UserCircle } from 'lucide-react';
 import ProfileView from './ProfileView';
 import { getBackendURL, getCookie } from '@stevederico/skateboard-ui/Utilities';
 
-export default function HomeView() {
+export default function HomeView({ isProfileView }) {
   const { favorites, getFavorites, removeFavorite, addFavorite } = useFavorites();
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
@@ -14,6 +14,7 @@ export default function HomeView() {
   const [selectedProfile, setSelectedProfile] = useState(null);
   const [profiles, setProfiles] = useState([]);
   const navigate = useNavigate();
+  const { username } = useParams();
 
   const debouncedSearch = useCallback(async (query) => {
     if (!query.trim()) {
@@ -68,13 +69,22 @@ export default function HomeView() {
         })
         const data = await response.json();
         setProfiles(data);
+        
+        // If we're in profile view mode, find and set the selected profile
+        if (isProfileView && username) {
+          const profile = data.find(p => p.name.toLowerCase() === username.replace('@', '').toLowerCase());
+          if (profile) {
+            setSelectedProfile(profile);
+            setIsMyFavoritesOpen(true);
+          }
+        }
       } catch (error) {
         console.error('Error fetching profiles:', error);
       }
     };
 
     fetchProfiles();
-  }, []);
+  }, [isProfileView, username]);
 
   const handleSearchInput = (e) => {
     setSearchQuery(e.target.value);
@@ -83,17 +93,19 @@ export default function HomeView() {
   return (
     <div className="px-4 py-6 bg-background min-h-screen">
       {/* Search Bar */}
-      <div className="relative mb-8">
+      {!isProfileView && (
+        <div className="relative mb-8">
 
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={handleSearchInput}
-          placeholder="Search places..."
-          className="w-full pl-4 pr-12 py-3 rounded-xl bg-accent shadow-lg border border-gray-300 focus:outline-none focus:ring-2"
-        />
-        <Search className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-      </div>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={handleSearchInput}
+            placeholder="Search places..."
+            className="w-full pl-4 pr-12 py-3 rounded-xl bg-accent shadow-lg border border-gray-300 focus:outline-none focus:ring-2"
+          />
+          <Search className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+        </div>
+      )}
 
       {searchQuery ? (
         // Search Results
@@ -193,12 +205,9 @@ export default function HomeView() {
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {profiles.map(profile => (
-                      <div
+                      <Link
                         key={profile._id}
-                        onClick={() => {
-                          setSelectedProfile(profile);
-                          setIsMyFavoritesOpen(true);
-                        }}
+                        to={`/app/${profile.name.toLowerCase()}`}
                         className="bg-accent rounded-xl shadow-md p-6 hover:shadow-lg transition-all cursor-pointer"
                       >
                         <div className="flex items-center gap-4">
@@ -210,7 +219,7 @@ export default function HomeView() {
                             </p>
                           </div>
                         </div>
-                      </div>
+                      </Link>
                     ))}
                   </div>
                 </div>
@@ -222,6 +231,9 @@ export default function HomeView() {
         onClose={() => {
           setIsMyFavoritesOpen(false);
           setSelectedProfile(null);
+          if (isProfileView) {
+            navigate('/app/home');
+          }
         }} 
         profile={selectedProfile}
       />
