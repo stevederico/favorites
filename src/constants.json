@@ -4,7 +4,6 @@
     "tagline": "Share Your Favorites",
     "backendURL": "https://bob.bixbyapps.com",
     "devBackendURL": "http://localhost:3000",
-    "noLogin": true,
     "pages": [
         {
             "title": "Home",
@@ -12,9 +11,9 @@
             "icon": "house"
         },
         {
-            "title": "Other",
-            "url": "other",
-            "icon": "inbox"
+            "title": "Map",
+            "url": "map",
+            "icon": "map"
         }
     ],
     "stripeProducts": [{

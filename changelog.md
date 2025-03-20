@@ -9,8 +9,17 @@ set primary color in styles.css
 remove readme.md
 deno install
 create DB in mongo
-
-- add map with leaflet
+start github repo
+added maped with leaflet
+added to config.json in bixby-backend
+switch to backend and database
+read favorites
+- create favorites
+- update favorites
+- delete favorites
+- list mode
+- profiles
+- show who you follow
 
 - add profiles for people/celebs and fill it out for them, normand and david chang
 
@@ -34,5 +43,6 @@ TEMPLATE
 - create DB in mongo
 - add folder to bixby-proxy
 - start github repo
-
+- add to config.json in bixby-backend, set locahost in config.json to current DB
+- create router for bixby-backend
 

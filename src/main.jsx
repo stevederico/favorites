@@ -23,7 +23,7 @@ import { ContextProvider, getState } from './context.jsx';
 import constants from './constants.json';
 
 import HomeView from './components/HomeView.jsx'
-import OtherView from './components/OtherView.jsx'
+import MapView from './components/MapView.jsx'
 
 const ProtectedRoute = () => {
   const auth = isAuthenticated();
@@ -83,7 +83,7 @@ const App = () => {
         <Route path="/app" element={<ProtectedRoute />}>
               <Route index element={<Navigate to="home" replace />} />
               <Route path="home" element={<HomeView />} />
-              <Route path="other" element={<OtherView />} />
+              <Route path="map" element={<MapView />} />
               <Route path="settings" element={<SettingsView />} />
               <Route path="stripe" element={<StripeView />} />
         </Route>
