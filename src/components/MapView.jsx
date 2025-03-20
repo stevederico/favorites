@@ -25,21 +25,27 @@ export default function MapView() {
       return fLat === locLat && fLong === locLong;
     });
 
+    // Double encode the JSON to handle special characters
+    const locationJSON = JSON.stringify(location).replace(/"/g, '&quot;');
+    
     container.innerHTML = `
       <div class="flex flex-col gap-2 min-w-[200px]">
         <strong class="text-lg">${location.title || location.name}</strong>
-        <div class="text-sm">${location.address || ''}</div>
+        <div class="text-sm text-gray-600 truncate">${location.address || ''}</div>
         <div class="flex flex-col gap-2 mt-2">
           <textarea 
-            class="note-input px-2 py-1 rounded border border-gray-300" 
+            class="note-input w-full px-2 py-1 rounded border border-gray-300" 
             placeholder="Add notes..."
             rows="3"
+            ${!isFavorited ? 'disabled' : ''}
           >${favorite?.notes || ''}</textarea>
-          <div class="flex justify-between items-center mt-2">
-            <button class="save-note-btn px-2 py-1 border rounded hover:opacity-80 ${!isFavorited ? 'hidden' : ''}">
-              Save Notes
-            </button>
-            <button class="heart-btn text-xl" data-location='${JSON.stringify(location)}'>
+          <div class="flex justify-end items-center gap-2 mt-2">
+            ${isFavorited ? `
+              <button class="save-note-btn px-3 py-1 border rounded hover:opacity-80 cursor-pointer">
+                Save Notes
+              </button>
+            ` : ''}
+            <button class="heart-btn text-xl cursor-pointer">
               ${isFavorited ? '❤️' : '🤍'}
             </button>
           </div>
@@ -47,12 +53,27 @@ export default function MapView() {
       </div>
     `;
 
+    // Set location data after HTML creation to avoid escaping issues
     const heartBtn = container.querySelector('.heart-btn');
+    heartBtn.dataset.locationLat = location.coordinates.lat;
+    heartBtn.dataset.locationLong = location.coordinates.long;
+    heartBtn.dataset.locationTitle = location.title || location.name || '';
+    heartBtn.dataset.locationAddress = location.address || '';
+
     const noteInput = container.querySelector('.note-input');
     const saveNoteBtn = container.querySelector('.save-note-btn');
 
+    // Update click handler to use separate data attributes
     heartBtn.addEventListener('click', async function() {
-      const locationData = JSON.parse(this.dataset.location);
+      const locationData = {
+        title: this.dataset.locationTitle,
+        coordinates: {
+          lat: parseFloat(this.dataset.locationLat),
+          long: parseFloat(this.dataset.locationLong)
+        },
+        address: this.dataset.locationAddress
+      };
+
       const existingFavorite = favorites.find(f => {
         if (!f.coordinates || !locationData.coordinates) return false;
         const fLat = parseFloat(f.coordinates.lat);
@@ -64,20 +85,20 @@ export default function MapView() {
       
       if (!existingFavorite) {
         const newFavorite = await addFavorite({ 
-          title: locationData.title || locationData.name,
+          title: locationData.title,
           notes: noteInput.value,
           coordinates: locationData.coordinates,
           address: locationData.address
         });
         if (newFavorite) {
           this.textContent = '❤️';
-          saveNoteBtn.classList.remove('hidden');
+          saveNoteBtn?.classList.remove('hidden');
         }
       } else {
         const success = await removeFavorite(existingFavorite._id);
         if (success) {
           this.textContent = '🤍';
-          saveNoteBtn.classList.add('hidden');
+          saveNoteBtn?.classList.add('hidden');
         }
       }
     });
