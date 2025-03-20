@@ -38,8 +38,8 @@ export default function MyFavorites({ isOpen, onClose }) {
         </div>
 
         {/* Favorites List */}
-        <div className="flex-1 overflow-y-auto">
-          <div className="p-4 space-y-4 h-full">
+        <div className="flex-1 overflow-y-auto mb-44">
+          <div className="p-4 space-y-4 h-full ">
             {favorites.length === 0 ? (
               <div className="flex items-center justify-center h-full">
                 <p className="opacity-70">No favorite places yet</p>
