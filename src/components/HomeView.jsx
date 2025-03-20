@@ -1,8 +1,9 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useFavorites } from '../contexts/FavoritesContext';
-import { Search, Users, MapPin, Clock, Heart } from 'lucide-react';
-import MyFavorites from './MyFavorites';
+import { Search, Users, MapPin, Clock, Heart, UserCircle } from 'lucide-react';
+import ProfileView from './ProfileView';
+import { getBackendURL, getCookie } from '@stevederico/skateboard-ui/Utilities';
 
 export default function HomeView() {
   const { favorites, getFavorites, removeFavorite, addFavorite } = useFavorites();
@@ -10,6 +11,8 @@ export default function HomeView() {
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isMyFavoritesOpen, setIsMyFavoritesOpen] = useState(false);
+  const [profiles, setProfiles] = useState([]);
+  const navigate = useNavigate();
 
   const debouncedSearch = useCallback(async (query) => {
     if (!query.trim()) {
@@ -52,6 +55,25 @@ export default function HomeView() {
 
     return () => clearTimeout(timeoutId);
   }, [searchQuery, debouncedSearch]);
+
+  useEffect(() => {
+    const fetchProfiles = async () => {
+      try {
+        const response = await fetch(`${getBackendURL()}/profiles`, {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${getCookie('token')}`
+          }
+        })
+        const data = await response.json();
+        setProfiles(data);
+      } catch (error) {
+        console.error('Error fetching profiles:', error);
+      }
+    };
+
+    fetchProfiles();
+  }, []);
 
   const handleSearchInput = (e) => {
     setSearchQuery(e.target.value);
@@ -122,69 +144,73 @@ export default function HomeView() {
       ) : (
         <>
           {/* Quick Actions */}
-          <div className="grid grid-cols-2 gap-4 mb-8">
-            <button className="flex items-center justify-center gap-2 p-4 rounded-xl bg-purple-500 hover:bg-purple-600 transition-colors cursor-pointer">
-              <Users size={24} />
-              <span className="font-medium">Profiles</span>
-            </button>
-            <button 
-              onClick={() => setIsMyFavoritesOpen(true)}
-              className="flex items-center justify-center gap-2 p-4 rounded-xl bg-blue-500 hover:bg-blue-600 transition-colors cursor-pointer"
-            >
-              <MapPin size={24} />
-              <span className="font-medium">My Places</span>
-            </button>
-          </div>
+                <div className="grid grid-cols-2 gap-4 mb-8">
+                <button className="flex items-center justify-center gap-2 p-4 rounded-xl bg-purple-500 hover:bg-purple-600 transition-colors cursor-pointer">
+                  <MapPin size={24} />
+                  <span className="font-medium">Show Map</span>
+                </button>
+                <button 
+                  onClick={() => setIsMyFavoritesOpen(true)}
+                  className="flex items-center justify-center gap-2 p-4 rounded-xl bg-blue-500 hover:bg-blue-600 transition-colors cursor-pointer"
+                >
+                  <Users size={24} />
+                  <span className="font-medium">My Profile</span>
+                </button>
+                </div>
 
-          {/* Recent Activity */}
-          <div className="mb-8">
-            <div className="flex items-center gap-2 mb-4">
-              <Clock size={24} className="text-orange-500" />
-              <h2 className="text-xl font-bold">Recently Added</h2>
-            </div>
-            <div className="bg-accent rounded-xl p-4 space-y-4">
-              {favorites.slice(0, 3).map(favorite => (
-                <div key={`recent-${favorite._id}`} className="flex items-center justify-between p-3 bg-background rounded-lg">
-                  <div className="flex items-center gap-3">
+                {/* Recent Activity */}
+                <div className="mb-8">
+                <div className="flex items-center gap-2 mb-4">
+                  <Clock size={24} className="text-orange-500" />
+                  <h2 className="text-xl font-bold">Recently Added</h2>
+                </div>
+                <div className="bg-accent rounded-xl p-4 space-y-4">
+                  {favorites.slice(0, 3).map(favorite => (
+                  <div 
+                    key={`recent-${favorite._id}`} 
+                    onClick={() => navigate(`/app/map?lat=${favorite.coordinates?.lat}&lng=${favorite.coordinates?.long}`)}
+                    className="flex items-center justify-between p-3 bg-background rounded-lg hover:bg-blue-500/10 transition-colors cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3">
                     <Heart size={20} className="text-red-500" />
                     <span>{favorite.title}</span>
+                    </div>
+                    <span className="text-sm opacity-70">Just now</span>
                   </div>
-                  <span className="text-sm opacity-70">Just now</span>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </div>
+                </div>
 
-          {/* Favorites Grid */}
-          <div className="mb-8">
-            <h2 className="text-xl font-bold mb-4">My Favorite Places</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {favorites.map(favorite => (
-                <div key={favorite._id} className="bg-accent rounded-xl shadow-md p-4 flex flex-col">
-                  <h3 className="font-semibold text-lg mb-2">{favorite.title}</h3>
-                  <div className="flex justify-between items-center mt-auto pt-4">
-                    <Link 
-                      to={`/app/map?lat=${favorite.coordinates?.lat}&lng=${favorite.coordinates?.long}`} 
-                      className="flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500 hover:bg-blue-600 transition-colors cursor-pointer"
-                    >
-                      <MapPin size={16} />
-                      <span>View Map</span>
-                    </Link>
-                    <button
-                      onClick={() => removeFavorite(favorite._id)}
-                      className="p-2 hover:bg-background rounded-full transition-colors cursor-pointer"
-                    >
-                      ❌
-                    </button>
+                {/* Profiles Grid */}
+                <div className="mb-8">
+                  <div className="flex items-center gap-3 mb-6">
+                    <UserCircle size={24} className="text-blue-500" />
+                    <h2 className="text-xl font-bold">Profiles</h2>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {profiles.map(profile => (
+                      <div
+                        key={profile._id}
+                        onClick={() => navigate(`/app/map/${profile.name}`)}
+                        className="bg-accent rounded-xl shadow-md p-6 hover:shadow-lg transition-all cursor-pointer"
+                      >
+                        <div className="flex items-center gap-4">
+                          <UserCircle size={40} className="text-blue-500" />
+                          <div>
+                            <h3 className="font-semibold text-lg capitalize">{profile.name}</h3>
+                            <p className="text-sm opacity-70">
+                              {favorites.filter(fav => fav._id === profile._id).length} favorites
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
         </>
       )}
 
-      <MyFavorites 
+      <ProfileView 
         isOpen={isMyFavoritesOpen} 
         onClose={() => setIsMyFavoritesOpen(false)} 
       />

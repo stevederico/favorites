@@ -22,17 +22,23 @@ delete favorites
 update notes
 Search from HomeView
 Improved search on MapView
-
-HOME PAGE
-Search bar
-- profiles
-    - show profiles
-- My places
-    - My places
-- Recently added
-    - social feed 
+Search bar homeView
+recently added
+profiles homeView
 
 
+
+- show map button
+- fix number of favorites on profiles
+- fix profile map url
+- setup profile map url
+- full social feed 
+
+
+
+
+/stevederico/map - shows a map of their favs
+/stevederico - profile
 
 
 
