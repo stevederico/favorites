@@ -26,13 +26,11 @@ Search bar homeView
 recently added
 profiles homeView
 quick action button
-
-
-- show map button
+show map button
 - fix number of favorites on profiles
 - fix profile map url
 - setup profile map url
-- full social feed 
+- full social feed, fix just now
 
 
 

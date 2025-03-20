@@ -257,17 +257,17 @@ export default function MapView() {
   }, [favorites, searchParams]);
 
   return (
-    <div className="w-screen h-screen relative flex flex-col items-center justify-center">
-      <div className="absolute top-4 z-[1000] w-full px-4 max-w-screen-lg mx-auto">
-        <div className="relative w-full">
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={handleSearchInput}
-            placeholder="Search places..."
-            className="w-full pl-4 pr-12 py-3 rounded-xl bg-accent shadow-lg border border-gray-300 focus:outline-none focus:ring-2"
-          />
-          <Search className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+<div className="w-screen h-screen relative flex flex-col">
+  <div className="w-full absolute top-4 z-[1000]  px-2 pt-2">
+    <div className="relative md:w-[calc(100vw-190px)] max-w-full mx-2">
+      <input
+        type="text"
+        value={searchQuery}
+        onChange={handleSearchInput}
+        placeholder="Search places..."
+        className="w-full pl-4 pr-12 py-3 rounded-xl bg-accent shadow-lg border border-gray-300 focus:outline-none focus:ring-2"
+      />
+      <Search className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
           
           {/* Search Results Dropdown */}
           {(searchResults.length > 0 || isSearching) && searchQuery && (

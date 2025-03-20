@@ -1,10 +1,10 @@
 import { useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { MapPin, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import { useFavorites } from '../contexts/FavoritesContext';
+import LocationCard from './LocationCard';
 
 export default function MyFavorites({ isOpen, onClose }) {
-  const { favorites, removeFavorite } = useFavorites();
+  const { favorites } = useFavorites();
 
   useEffect(() => {
     if (isOpen) {
@@ -46,28 +46,11 @@ export default function MyFavorites({ isOpen, onClose }) {
               </div>
             ) : (
               favorites.map(favorite => (
-                <div 
+                <LocationCard 
                   key={favorite._id} 
-                  className="bg-accent rounded-xl p-4 shadow-sm"
-                >
-                  <h3 className="font-semibold text-lg mb-2">{favorite.title}</h3>
-                  <p className="text-sm opacity-70 mb-4">{favorite.address}</p>
-                  <div className="flex justify-between items-center">
-                    <Link 
-                      to={`/app/map?lat=${favorite.coordinates?.lat}&lng=${favorite.coordinates?.long}`}
-                      className="flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500 hover:bg-blue-600 transition-colors cursor-pointer"
-                    >
-                      <MapPin size={16} />
-                      <span>View Map</span>
-                    </Link>
-                    <button
-                      onClick={() => removeFavorite(favorite._id)}
-                      className="p-2 hover:bg-background rounded-full transition-colors cursor-pointer"
-                    >
-                      ❌
-                    </button>
-                  </div>
-                </div>
+                  location={favorite}
+                  showRemove={true}
+                />
               ))
             )}
           </div>

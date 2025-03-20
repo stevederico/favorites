@@ -149,15 +149,15 @@ export default function HomeView() {
                     onClick={() => navigate(`/app/map`)}
 
                 >
-                  <MapPin size={24} />
-                  <span className="font-medium">Show Map</span>
+                  <MapPin className="font-medium text-white" size={24} />
+                  <span className="font-medium text-white">Show Map</span>
                 </button>
                 <button 
                   onClick={() => setIsMyFavoritesOpen(true)}
                   className="flex flex-col  items-center justify-center gap-2 p-4 rounded-xl bg-blue-500 hover:bg-blue-600 transition-colors cursor-pointer"
                 >
-                  <User size={24} />
-                  <span className="font-medium">My Profile</span>
+                  <User className="font-medium text-white" size={24} />
+                  <span className="font-medium text-white">My Profile</span>
                 </button>
                 </div>
 
