@@ -11,6 +11,7 @@ export default function HomeView() {
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isMyFavoritesOpen, setIsMyFavoritesOpen] = useState(false);
+  const [selectedProfile, setSelectedProfile] = useState(null);
   const [profiles, setProfiles] = useState([]);
   const navigate = useNavigate();
 
@@ -194,7 +195,10 @@ export default function HomeView() {
                     {profiles.map(profile => (
                       <div
                         key={profile._id}
-                        onClick={() => navigate(`/app/map/${profile.name}`)}
+                        onClick={() => {
+                          setSelectedProfile(profile);
+                          setIsMyFavoritesOpen(true);
+                        }}
                         className="bg-accent rounded-xl shadow-md p-6 hover:shadow-lg transition-all cursor-pointer"
                       >
                         <div className="flex items-center gap-4">
@@ -215,7 +219,11 @@ export default function HomeView() {
 
       <ProfileView 
         isOpen={isMyFavoritesOpen} 
-        onClose={() => setIsMyFavoritesOpen(false)} 
+        onClose={() => {
+          setIsMyFavoritesOpen(false);
+          setSelectedProfile(null);
+        }} 
+        profile={selectedProfile}
       />
     </div>
   );

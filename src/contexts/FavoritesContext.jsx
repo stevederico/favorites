@@ -1,14 +1,20 @@
 import { createContext, useContext, useState } from 'react';
 import { getBackendURL, getCookie } from '@stevederico/skateboard-ui/Utilities';
+import { getState } from '../context';
 
 export const FavoritesContext = createContext();
 
 export function FavoritesProvider({ children }) {
   const [favorites, setFavorites] = useState([]);
+  const { state } = getState();
 
-  async function getFavorites() {
+  async function getFavorites(userID) {
+    let id = state.user._id
+    if (userID){
+      id = userID
+    }
     try {
-      const response = await fetch(`${getBackendURL()}/favorites`, {
+      const response = await fetch(`${getBackendURL()}/favorites?uid=${id}`, {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${getCookie('token')}`
@@ -22,6 +28,10 @@ export function FavoritesProvider({ children }) {
       return [];
     }
   }
+
+  const clearFavorites = () => {
+    setFavorites([]);
+  };
 
   async function addFavorite(location) {
     try {
@@ -83,7 +93,7 @@ export function FavoritesProvider({ children }) {
   }
 
   return (
-    <FavoritesContext.Provider value={{ favorites, getFavorites, addFavorite, removeFavorite, updateFavorite }}>
+    <FavoritesContext.Provider value={{ favorites, getFavorites, addFavorite, removeFavorite, updateFavorite, clearFavorites }}>
       {children}
     </FavoritesContext.Provider>
   );

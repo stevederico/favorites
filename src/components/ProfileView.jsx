@@ -3,8 +3,17 @@ import { X } from 'lucide-react';
 import { useFavorites } from '../contexts/FavoritesContext';
 import LocationCard from './LocationCard';
 
-export default function MyFavorites({ isOpen, onClose }) {
-  const { favorites } = useFavorites();
+export default function ProfileView({ isOpen, onClose, profile }) {
+  const { favorites, getFavorites, clearFavorites } = useFavorites();
+
+  useEffect(() => {
+    if (isOpen && profile) {
+      getFavorites(profile._id);
+    }
+    return () => {
+      clearFavorites();
+    };
+  }, [isOpen, profile]);
 
   useEffect(() => {
     if (isOpen) {
@@ -28,7 +37,7 @@ export default function MyFavorites({ isOpen, onClose }) {
       >
         {/* Header */}
         <div className="flex justify-between items-center p-4 border-b border-gray-200">
-          <h2 className="text-xl font-bold">My Favorites</h2>
+          <h2 className="text-xl font-bold capitalize">{profile ? `${profile.name}'s Favorites` : 'My Favorites'}</h2>
           <button 
             onClick={onClose}
             className="p-2 hover:bg-accent rounded-full transition-colors cursor-pointer"
@@ -42,7 +51,7 @@ export default function MyFavorites({ isOpen, onClose }) {
           <div className="p-4 space-y-4 h-full">
             {favorites.length === 0 ? (
               <div className="flex items-center justify-center h-full">
-                <p className="opacity-70">No favorite places yet</p>
+                <p className="opacity-70"></p>
               </div>
             ) : (
               <>
@@ -50,7 +59,7 @@ export default function MyFavorites({ isOpen, onClose }) {
                   <LocationCard 
                     key={favorite._id} 
                     location={favorite}
-                    showRemove={true}
+                    showRemove={!profile}
                   />
                 ))}
                 <div className="py-44" />

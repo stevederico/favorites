@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { MapPin, X } from 'lucide-react';
+import { MapPin, X, Heart } from 'lucide-react';
 import { useFavorites } from '../contexts/FavoritesContext';
 
 export default function LocationCard({ location, showRemove = true }) {
@@ -45,7 +45,7 @@ return (
                 )
             ) : null}
             <Link 
-                to={`/app/map?lat=${location.coordinates?.lat}&lng=${location.coordinates?.long}`} 
+                to={`/app/map?lat=${location.coordinates?.lat}&lng=${location.coordinates?.long}&title=${encodeURIComponent(location.title)}&address=${encodeURIComponent(location.address)}`} 
                 className="flex items-center gap-2 px-4 py-2 rounded-full text-white bg-blue-500 hover:bg-blue-600 transition-colors cursor-pointer"
             >
                 <MapPin size={16} />

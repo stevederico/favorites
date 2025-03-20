@@ -30,6 +30,7 @@ show map button
 fixed mapView centering
 identical searchBars
 fixing pop-ups
+show other profile favorites
 
 - fix number of favorites on profiles
 - fix profile map url
