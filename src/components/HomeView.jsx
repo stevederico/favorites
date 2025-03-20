@@ -2,12 +2,14 @@ import { useEffect, useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useFavorites } from '../contexts/FavoritesContext';
 import { Search, Users, MapPin, Clock, Heart } from 'lucide-react';
+import MyFavorites from './MyFavorites';
 
 export default function HomeView() {
   const { favorites, getFavorites, removeFavorite, addFavorite } = useFavorites();
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [isMyFavoritesOpen, setIsMyFavoritesOpen] = useState(false);
 
   const debouncedSearch = useCallback(async (query) => {
     if (!query.trim()) {
@@ -74,19 +76,20 @@ export default function HomeView() {
               <div key={index} className="bg-accent rounded-xl shadow-md p-4">
                 <h3 className="font-semibold text-lg mb-2">{result.title}</h3>
                 <p className="text-sm mb-4 opacity-70">{result.address}</p>
-                <div className="flex justify-between items-center">
+                <div className="flex gap-3 items-center">
                   <Link 
                     to={`/app/map?lat=${result.coordinates.lat}&lng=${result.coordinates.long}&title=${encodeURIComponent(result.title)}&address=${encodeURIComponent(result.address)}`} 
-                    className="flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500 hover:bg-blue-600 transition-colors"
+                    className="flex items-center gap-2 px-4 py-2 rounded-full border border-blue-500 hover:bg-blue-600 transition-colors text-blue-500"
                   >
                     <MapPin size={16} />
                     <span>View on Map</span>
                   </Link>
                   <button
                     onClick={() => addFavorite(result)}
-                    className="p-2 hover:bg-background rounded-full transition-colors"
+                    className="flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500 hover:bg-blue-600 transition-colors"
                   >
-                    🤍
+                    <Heart size={16} />
+                    <span>Add to Favorites</span>
                   </button>
                 </div>
               </div>
@@ -101,7 +104,10 @@ export default function HomeView() {
               <Users size={24} />
               <span className="font-medium">Profiles</span>
             </button>
-            <button className="flex items-center justify-center gap-2 p-4 rounded-xl bg-blue-500 hover:bg-blue-600 transition-colors">
+            <button 
+              onClick={() => setIsMyFavoritesOpen(true)}
+              className="flex items-center justify-center gap-2 p-4 rounded-xl bg-blue-500 hover:bg-blue-600 transition-colors"
+            >
               <MapPin size={24} />
               <span className="font-medium">My Places</span>
             </button>
@@ -154,6 +160,11 @@ export default function HomeView() {
           </div>
         </>
       )}
+
+      <MyFavorites 
+        isOpen={isMyFavoritesOpen} 
+        onClose={() => setIsMyFavoritesOpen(false)} 
+      />
     </div>
   );
 }
