@@ -21,10 +21,11 @@ needs to keep my likes in state and the pop-up when needed
 delete favorites
 update notes
 
-- list mode
+
+
+- social feed 
 - profiles
 - show who you follow
-
 - add profiles for people/celebs and fill it out for them, normand and david chang
 
 

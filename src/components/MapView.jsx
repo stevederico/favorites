@@ -144,7 +144,9 @@ export default function MapView() {
       const lat = searchParams.get('lat') || 36.1699;
       const lng = searchParams.get('lng') || -115.1398;
       
-      mapInstanceRef.current = L.map(mapRef.current).setView([lat, lng], 14);
+      mapInstanceRef.current = L.map(mapRef.current, {
+        zoomControl: false
+      }).setView([lat, lng], 14);
       
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap contributors'
@@ -204,18 +206,15 @@ export default function MapView() {
   }, [favorites, searchParams]);
 
   return (
-    <div className="w-screen h-screen relative">
-      <form onSubmit={handleSearch} className="absolute top-4 left-1/2 transform -translate-x-1/2 z-[1000] flex gap-2">
+    <div className="w-screen h-screen relative flex flex-col items-center justify-center">
+      <form onSubmit={handleSearch} className="absolute top-4 z-[1000] w-full px-4 max-w-screen-lg mx-auto flex justify-center">
         <input
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Search location..."
-          className="px-4 py-2 rounded-lg shadow-lg border border-gray-300 w-64 bg-background"
+          className="w-full max-w-md px-4 py-2 rounded-lg shadow-lg border border-gray-300 bg-background"
         />
-        <button type="submit" className="px-4 py-2 bg-blue-500 text-white rounded-lg shadow-lg hover:bg-blue-600">
-          Search
-        </button>
       </form>
       <div ref={mapRef} className="w-full h-full"></div>
     </div>

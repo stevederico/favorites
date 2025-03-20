@@ -16,12 +16,10 @@ export default function HomeView() {
         {favorites.map(favorite => (
           <div key={favorite._id} className="bg-accent rounded-lg shadow-md p-4 flex flex-col">
             <h3 className="font-semibold text-lg">{favorite.title}</h3>
-            {favorite.address && <p className="mt-1 text-sm">{favorite.address}</p>}
-            {favorite.notes && <p className="mt-2">{favorite.notes}</p>}
             <div className="flex justify-between items-center mt-4">
               <Link 
                 to={`/app/map?lat=${favorite.coordinates?.lat}&lng=${favorite.coordinates?.long}`} 
-                className="hover:opacity-80"
+                className="hover:opacity-80 border rounded-full px-3 py-2 bg-app text-white"
               >
                 View on Map
               </Link>
