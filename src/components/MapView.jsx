@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useFavorites } from '../contexts/FavoritesContext';
+import { Search, MapPin } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
@@ -9,6 +10,8 @@ export default function MapView() {
   const mapInstanceRef = useRef(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchParams] = useSearchParams();
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
   const { favorites, getFavorites, addFavorite, removeFavorite, updateFavorite } = useFavorites();
 
   function createPopupContent(location, isFavorited = false) {
@@ -98,42 +101,76 @@ export default function MapView() {
     return container;
   }
 
-  async function handleSearch(e) {
-    e.preventDefault();
-    if (!searchQuery) return;
-    try {
-      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}`);
-      const data = await response.json();
-      if (data.length > 0) {
-        const { lat, lon, display_name, name } = data[0];
-        
-        const title = name || display_name.split(',')[0].trim();
-        
-        const location = {
-          title,
-          coordinates: { lat: parseFloat(lat), long: parseFloat(lon) },
-          address: display_name
-        };
-        
-        mapInstanceRef.current.setView([location.coordinates.lat, location.coordinates.long], 14);
-        const existingFavorite = favorites.find(f => 
-          f.coordinates.lat === location.coordinates.lat && 
-          f.coordinates.long === location.coordinates.long
-        );
-        
-        L.marker([location.coordinates.lat, location.coordinates.long])
-          .bindPopup(createPopupContent(location, !!existingFavorite))
-          .addTo(mapInstanceRef.current);
+  const handleSearchInput = (e) => {
+    setSearchQuery(e.target.value);
+  };
+
+  const handleResultClick = (result) => {
+    setSearchQuery('');
+    setSearchResults([]);
+    
+    const location = {
+      title: result.title,
+      coordinates: result.coordinates,
+      address: result.address
+    };
+    
+    mapInstanceRef.current.setView([location.coordinates.lat, location.coordinates.long], 14);
+    const existingFavorite = favorites.find(f => 
+      f.coordinates?.lat === location.coordinates.lat && 
+      f.coordinates?.long === location.coordinates.long
+    );
+    
+    // Clear existing search markers
+    mapInstanceRef.current.eachLayer((layer) => {
+      if (layer instanceof L.Marker && layer._searchMarker) {
+        layer.remove();
       }
+    });
+
+    const marker = L.marker([location.coordinates.lat, location.coordinates.long]);
+    marker._searchMarker = true;
+    marker.bindPopup(createPopupContent(location, !!existingFavorite))
+      .addTo(mapInstanceRef.current)
+      .openPopup();
+  };
+
+  const debouncedSearch = useCallback(async (query) => {
+    if (!query.trim()) {
+      setSearchResults([]);
+      return;
+    }
+    
+    setIsSearching(true);
+    try {
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`);
+      const data = await response.json();
+      const results = data.slice(0, 3).map(item => ({
+        title: item.name || item.display_name.split(',')[0].trim(),
+        address: item.display_name,
+        coordinates: { lat: parseFloat(item.lat), long: parseFloat(item.lon) }
+      }));
+      setSearchResults(results);
     } catch (error) {
       console.error('Error searching location:', error);
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
     }
-  }
+  }, []);
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      debouncedSearch(searchQuery);
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery, debouncedSearch]);
 
   function getValidLatLng(coordinates) {
     if (!coordinates) return null;
     const lat = parseFloat(coordinates.lat);
-    const lng = parseFloat(coordinates.long);
+    const lng = parseFloat(coordinates.long || coordinates.lng);
     if (isNaN(lat) || isNaN(lng)) return null;
     return [lat, lng];
   }
@@ -165,58 +202,98 @@ export default function MapView() {
 
   // Handle markers when favorites change and URL params
   useEffect(() => {
-    if (mapInstanceRef.current && favorites?.length > 0) {
-      mapInstanceRef.current.eachLayer((layer) => {
-        if (layer instanceof L.Marker) {
-          layer.remove();
-        }
-      });
-      
-      // Handle URL parameters after favorites are loaded
-      if (searchParams.get('lat') && searchParams.get('lng')) {
-        const coords = {
-          lat: parseFloat(searchParams.get('lat')),
-          long: parseFloat(searchParams.get('lng'))
-        };
-        const favorite = favorites.find(f => {
-          if (!f?.coordinates) return false;
-          return f.coordinates.lat === coords.lat && 
-                 f.coordinates.long === coords.long;
-        });
-        if (favorite) {
-          const marker = L.marker([coords.lat, coords.long])
-            .bindPopup(createPopupContent(favorite, true))
-            .addTo(mapInstanceRef.current);
-          marker.openPopup();
-          return;
-        }
+    if (!mapInstanceRef.current) return;
+    
+    // Clear existing markers
+    mapInstanceRef.current.eachLayer((layer) => {
+      if (layer instanceof L.Marker) {
+        layer.remove();
       }
+    });
+
+    // Handle URL parameters and show search pin
+    if (searchParams.get('lat') && searchParams.get('lng')) {
+      const coords = {
+        lat: parseFloat(searchParams.get('lat')),
+        long: parseFloat(searchParams.get('lng'))
+      };
       
-      // Show all other favorites
-      favorites.forEach(loc => {
-        if (!loc?.coordinates) return;
-        const coords = getValidLatLng(loc.coordinates);
-        if (coords) {
-          L.marker(coords)
-            .bindPopup(createPopupContent(loc, true))
-            .addTo(mapInstanceRef.current);
-        }
+      const title = searchParams.get('title') ? decodeURIComponent(searchParams.get('title')) : 'Location';
+      const address = searchParams.get('address') ? decodeURIComponent(searchParams.get('address')) : '';
+
+      // Always show a pin for the search coordinates
+      const location = {
+        title,
+        coordinates: coords,
+        address
+      };
+
+      // Check if this is a favorite
+      const favorite = favorites.find(f => {
+        if (!f?.coordinates) return false;
+        const fLat = parseFloat(f.coordinates.lat);
+        const fLong = parseFloat(f.coordinates.long);
+        return Math.abs(fLat - coords.lat) < 0.0001 && 
+               Math.abs(fLong - coords.long) < 0.0001;
       });
+
+      const marker = L.marker([coords.lat, coords.long])
+        .bindPopup(createPopupContent(favorite || location, !!favorite))
+        .addTo(mapInstanceRef.current);
+      marker.openPopup();
+      mapInstanceRef.current.setView([coords.lat, coords.long], 14);
     }
+
+    // Show all other favorites
+    favorites.forEach(loc => {
+      if (!loc?.coordinates) return;
+      const coords = getValidLatLng(loc.coordinates);
+      if (coords) {
+        L.marker(coords)
+          .bindPopup(createPopupContent(loc, true))
+          .addTo(mapInstanceRef.current);
+      }
+    });
   }, [favorites, searchParams]);
 
   return (
     <div className="w-screen h-screen relative flex flex-col items-center justify-center">
-      <form onSubmit={handleSearch} className="absolute top-4 z-[1000] w-full px-4 max-w-screen-lg mx-auto flex justify-center">
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search location..."
-          className="w-full max-w-md px-4 py-2 rounded-lg shadow-lg border border-gray-300 bg-background"
-        />
-      </form>
-      <div ref={mapRef} className="w-full h-full"></div>
+      <div className="absolute top-4 z-[1000] w-full px-4 max-w-screen-lg mx-auto">
+        <div className="relative w-full">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={handleSearchInput}
+            placeholder="Search places..."
+            className="w-full pl-4 pr-12 py-3 rounded-xl bg-accent shadow-lg border border-gray-300 focus:outline-none focus:ring-2"
+          />
+          <Search className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+          
+          {/* Search Results Dropdown */}
+          {(searchResults.length > 0 || isSearching) && searchQuery && (
+            <div className="absolute w-full mt-2 rounded-lg bg-accent border border-gray-300 shadow-lg overflow-hidden">
+              {isSearching ? (
+                <div className="p-3 text-center">Searching...</div>
+              ) : (
+                searchResults.map((result, index) => (
+                  <button
+                    key={index}
+                    onClick={() => handleResultClick(result)}
+                    className="w-full p-3 flex items-center gap-3 hover:bg-background transition-colors border-b last:border-b-0 border-gray-300"
+                  >
+                    <MapPin size={16} className="flex-shrink-0" />
+                    <div className="text-left overflow-hidden">
+                      <div className="font-medium truncate">{result.title}</div>
+                      <div className="text-sm opacity-70 truncate">{result.address}</div>
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+      <div ref={mapRef} className="w-full h-full" />
     </div>
   );
 }

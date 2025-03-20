@@ -7,6 +7,7 @@
     "npm:@vitejs/plugin-react-swc@^3.8.0": "3.8.0_vite@6.2.2__lightningcss@1.29.2",
     "npm:clsx@^2.1.1": "2.1.1",
     "npm:leaflet@^1.9.4": "1.9.4",
+    "npm:lucide-react@0.483": "0.483.0_react@19.0.0",
     "npm:react-dom@19": "19.0.0_react@19.0.0",
     "npm:react-router-dom@^7.3.0": "7.3.0_react@19.0.0_react-dom@19.0.0__react@19.0.0",
     "npm:react@19": "19.0.0",
@@ -402,7 +403,7 @@
         "@radix-ui/react-tooltip",
         "class-variance-authority",
         "clsx",
-        "lucide-react",
+        "lucide-react@0.482.0_react@19.0.0",
         "react",
         "react-dom",
         "tailwind-merge",
@@ -798,6 +799,12 @@
         "react"
       ]
     },
+    "lucide-react@0.483.0_react@19.0.0": {
+      "integrity": "sha512-WldsY17Qb/T3VZdMnVQ9C3DDIP7h1ViDTHVdVGnLZcvHNg30zH/MTQ04RTORjexoGmpsXroiQXZ4QyR0kBy0FA==",
+      "dependencies": [
+        "react"
+      ]
+    },
     "nanoid@3.3.9": {
       "integrity": "sha512-SppoicMGpZvbF1l3z4x7No3OlIjP7QJvC9XR7AhZr1kL133KHnKPztkKDc+Ir4aJ/1VhTySrtKhrsycmrMQfvg=="
     },
@@ -1054,6 +1061,7 @@
         "npm:@tailwindcss/vite@^4.0.7",
         "npm:@vitejs/plugin-react-swc@^3.8.0",
         "npm:leaflet@^1.9.4",
+        "npm:lucide-react@0.483",
         "npm:react-dom@19",
         "npm:react-router-dom@^7.3.0",
         "npm:react@19",

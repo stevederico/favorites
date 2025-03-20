@@ -20,12 +20,22 @@ create favorites via heart
 needs to keep my likes in state and the pop-up when needed
 delete favorites
 update notes
+Search from HomeView
+Improved search on MapView
 
-
-
-- social feed 
+HOME PAGE
+Search bar
 - profiles
-- show who you follow
+    - show profiles
+- My places
+    - My places
+- Recently added
+    - social feed 
+
+
+
+
+
 - add profiles for people/celebs and fill it out for them, normand and david chang
 
 

@@ -13,6 +13,7 @@
     "@radix-ui/react-dialog": "^1.1.6",
     "@stevederico/skateboard-ui": "^0.2.7",
     "leaflet": "^1.9.4",
+    "lucide-react": "^0.483.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-router-dom": "^7.3.0",
