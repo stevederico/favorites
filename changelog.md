@@ -33,5 +33,6 @@ TEMPLATE
 - deno install
 - create DB in mongo
 - add folder to bixby-proxy
+- start github repo
 
 

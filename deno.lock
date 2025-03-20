@@ -5,6 +5,7 @@
     "npm:@tailwindcss/vite@^4.0.7": "4.0.14_vite@6.2.2__lightningcss@1.29.2_lightningcss@1.29.2",
     "npm:@vitejs/plugin-react-swc@^3.8.0": "3.8.0_vite@6.2.2__lightningcss@1.29.2",
     "npm:clsx@^2.1.1": "2.1.1",
+    "npm:leaflet@^1.9.4": "1.9.4",
     "npm:react-dom@19": "19.0.0_react@19.0.0",
     "npm:react-router-dom@^7.3.0": "7.3.0_react@19.0.0_react-dom@19.0.0__react@19.0.0",
     "npm:react@19": "19.0.0",
@@ -732,6 +733,9 @@
     "js-tokens@4.0.0": {
       "integrity": "sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ=="
     },
+    "leaflet@1.9.4": {
+      "integrity": "sha512-nxS1ynzJOmOlHp+iL3FyWqK89GtNL8U8rvlMOsQdTTssxZwCXh8N2NB3GDQOL+YR3XnWyZAxwQixURb+FA74PA=="
+    },
     "lightningcss-darwin-arm64@1.29.2": {
       "integrity": "sha512-cK/eMabSViKn/PG8U/a7aCorpeKLMlK0bQeNHmdb7qUnBkNPnL+oV5DjJUo0kqWsJUapZsM4jCfYItbqBDvlcA=="
     },
@@ -1047,6 +1051,7 @@
         "npm:@stevederico/skateboard-ui@~0.2.7",
         "npm:@tailwindcss/vite@^4.0.7",
         "npm:@vitejs/plugin-react-swc@^3.8.0",
+        "npm:leaflet@^1.9.4",
         "npm:react-dom@19",
         "npm:react-router-dom@^7.3.0",
         "npm:react@19",
