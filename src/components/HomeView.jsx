@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useFavorites } from '../contexts/FavoritesContext';
-import { Search, Users, MapPin, Clock, Heart, UserCircle } from 'lucide-react';
+import { Search, User, MapPin, Clock, Heart, UserCircle } from 'lucide-react';
 import ProfileView from './ProfileView';
 import { getBackendURL, getCookie } from '@stevederico/skateboard-ui/Utilities';
 
@@ -145,15 +145,18 @@ export default function HomeView() {
         <>
           {/* Quick Actions */}
                 <div className="grid grid-cols-2 gap-4 mb-8">
-                <button className="flex items-center justify-center gap-2 p-4 rounded-xl bg-purple-500 hover:bg-purple-600 transition-colors cursor-pointer">
+                <button className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl bg-purple-500 hover:bg-purple-600 transition-colors cursor-pointer"
+                    onClick={() => navigate(`/app/map`)}
+
+                >
                   <MapPin size={24} />
                   <span className="font-medium">Show Map</span>
                 </button>
                 <button 
                   onClick={() => setIsMyFavoritesOpen(true)}
-                  className="flex items-center justify-center gap-2 p-4 rounded-xl bg-blue-500 hover:bg-blue-600 transition-colors cursor-pointer"
+                  className="flex flex-col  items-center justify-center gap-2 p-4 rounded-xl bg-blue-500 hover:bg-blue-600 transition-colors cursor-pointer"
                 >
-                  <Users size={24} />
+                  <User size={24} />
                   <span className="font-medium">My Profile</span>
                 </button>
                 </div>
