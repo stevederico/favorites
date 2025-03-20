@@ -33,26 +33,11 @@ fixing pop-ups
 show other profile favorites
 working profile url /app/@frank
 0.1.0
-
-- fix profile map url
-
-
+- add profile map url
+- rank your favorites
 - full social feed, fix just now
 - fix number of favorites on profiles
-
-
-
-/stevederico/map - shows a map of their favs
-/stevederico - profile
-
-
-
 - add profiles for people/celebs and fill it out for them, normand and david chang
-
-
-
-
-
 
 TEMPLATE
 - git init
