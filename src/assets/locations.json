@@ -1,0 +1,27 @@
+[{
+    "venue": "The Sand Dollar at Plaza",
+    "image": null,
+    "deal_details": "Live music Thu-Sat, bar-top gaming, pool tables, champagne vending machine.",
+    "location": "fremont",
+    "gps": "36.1710, -115.1460",
+    "price": "Varies",
+    "tags": ["live music", "bar", "unique"]
+  },
+  {
+    "venue": "Cheap Shrimp Cocktail at Fremont",
+    "image": null,
+    "deal_details": "$2.99 shrimp cocktail at Lanai Express.",
+    "location": "fremont",
+    "gps": "36.1700, -115.1440",
+    "price": "$2.99",
+    "tags": ["food", "cheap", "classic"]
+  },
+  {
+    "venue": "The Mob Museum",
+    "image": null,
+    "deal_details": "History of organized crime, artifacts, interactive displays.",
+    "location": "fremont",
+    "gps": "36.1720, -115.1410",
+    "price": "Varies",
+    "tags": ["museum", "crime", "history"]
+  }]
