@@ -33,11 +33,16 @@ fixing pop-ups
 show other profile favorites
 working profile url /app/@frank
 0.1.0
+try to fix leaflet pins
+
 - add profile map url
 - rank your favorites
 - full social feed, fix just now
-- fix number of favorites on profiles
 - add profiles for people/celebs and fill it out for them, normand and david chang
+
+
+- better handling for user name or @handle
+- add number of favorites to /profiles?
 
 TEMPLATE
 - git init

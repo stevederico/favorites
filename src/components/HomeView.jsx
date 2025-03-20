@@ -214,9 +214,6 @@ export default function HomeView({ isProfileView }) {
                           <UserCircle size={40} className="text-blue-500" />
                           <div>
                             <h3 className="font-semibold text-lg capitalize">{profile.name}</h3>
-                            <p className="text-sm opacity-70">
-                              {favorites.filter(fav => fav._id === profile._id).length} favorites
-                            </p>
                           </div>
                         </div>
                       </Link>
