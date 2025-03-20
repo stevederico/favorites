@@ -44,12 +44,13 @@ export function FavoritesProvider({ children }) {
 
   async function removeFavorite(_id) {
     try {
-      const response = await fetch(`${getBackendURL()}/favorites/${_id}`, {
+      const response = await fetch(`${getBackendURL()}/favorites`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${getCookie('token')}`
-        }
+        },
+        body: JSON.stringify({_id})
       });
       if (response.ok) {
         setFavorites(favorites.filter(f => f._id !== _id));
