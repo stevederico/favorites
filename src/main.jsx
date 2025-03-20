@@ -20,6 +20,7 @@ import SettingsView from '@stevederico/skateboard-ui/SettingsView';
 import NotFound from '@stevederico/skateboard-ui/NotFound';
 import { getCurrentUser } from '@stevederico/skateboard-ui/Utilities';
 import { ContextProvider, getState } from './context.jsx';
+import { FavoritesProvider } from './contexts/FavoritesContext';
 import constants from './constants.json';
 
 import HomeView from './components/HomeView.jsx'
@@ -77,35 +78,28 @@ const App = () => {
   }, [location.pathname, navigate, dispatch]);
 
   return (
-    <Routes>
-      <Route element={<Layout />}>
-        <Route path="/console" element={<Navigate to="/app" replace />} />
-        <Route path="/app" element={<ProtectedRoute />}>
-              <Route index element={<Navigate to="home" replace />} />
-              <Route path="home" element={<HomeView />} />
-              <Route path="map" element={<MapView />} />
-              <Route path="settings" element={<SettingsView />} />
-              <Route path="stripe" element={<StripeView />} />
+    <FavoritesProvider>
+      <Routes>
+        <Route element={<Layout />}>
+          <Route path="/console" element={<Navigate to="/app" replace />} />
+          <Route path="/app" element={<ProtectedRoute />}>
+            <Route index element={<Navigate to="home" replace />} />
+            <Route path="home" element={<HomeView />} />
+            <Route path="map" element={<MapView />} />
+            <Route path="settings" element={<SettingsView />} />
+            <Route path="stripe" element={<StripeView />} />
+          </Route>
         </Route>
-      </Route>
-      <Route path="/" element={<LandingView />} />
-      <Route path="/signin" element={<SignInView />} />
-      <Route path="/signup" element={<SignUpView />} />
-      <Route
-        path="/terms"
-        element={<TextView details={constants.termsOfService} />}
-      />
-      <Route
-        path="/privacy"
-        element={<TextView details={constants.privacyPolicy} />}
-      />
-      <Route path="/eula" element={<TextView details={constants.EULA} />} />
-      <Route
-        path="/subs"
-        element={<TextView details={constants.subscriptionDetails} />}
-      />
-      <Route path="*" element={<NotFound />} />
-    </Routes>
+        <Route path="/" element={<LandingView />} />
+        <Route path="/signin" element={<SignInView />} />
+        <Route path="/signup" element={<SignUpView />} />
+        <Route path="/terms" element={<TextView details={constants.termsOfService} />} />
+        <Route path="/privacy" element={<TextView details={constants.privacyPolicy} />} />
+        <Route path="/eula" element={<TextView details={constants.EULA} />} />
+        <Route path="/subs" element={<TextView details={constants.subscriptionDetails} />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </FavoritesProvider>
   );
 };
 
