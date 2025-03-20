@@ -1,9 +1,52 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useFavorites } from '../contexts/FavoritesContext';
-import { Search, MapPin } from 'lucide-react';
+import { Search, MapPin, Heart } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { createRoot } from 'react-dom/client';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
+
+const LocationPopup = ({ location, isFavorited, onSaveNotes, onToggleFavorite }) => {
+  const [notes, setNotes] = useState(location.notes || '');
+
+  useEffect(() => {
+    setNotes(location.notes || '');
+  }, [location.notes]);
+  
+  const handleSave = () => {
+    onSaveNotes(notes);
+  };
+  
+  return (
+    <div className="min-w-[250px] max-w-[400px] flex flex-col gap-2">
+      <strong className="text-lg font-semibold break-words">{location.title || location.name}</strong>
+      <div className="text-sm opacity-70 break-words">{location.address || ''}</div>
+      <div className="flex flex-col gap-2 mt-1">
+        <textarea 
+          className="w-full min-h-[80px] px-3 py-2 rounded-lg border border-accent/20 resize-none focus:outline-none focus:ring-1 focus:ring-accent" 
+          placeholder="Add notes..."
+          rows="3"
+          disabled={!isFavorited}
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          onBlur={handleSave}
+        />
+        <div className="flex justify-end mt-1">
+          <button 
+            className="p-2 hover:bg-accent/10 rounded-full transition-colors"
+            onClick={onToggleFavorite}
+            aria-label={isFavorited ? 'Remove from favorites' : 'Add to favorites'}
+          >
+            <Heart 
+              className={`w-6 h-6 ${isFavorited ? 'fill-current text-red-500' : 'text-accent/70'}`}
+            />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export default function MapView() {
   const mapRef = useRef(null);
@@ -16,109 +59,45 @@ export default function MapView() {
 
   function createPopupContent(location, isFavorited = false) {
     const container = document.createElement('div');
+    const root = createRoot(container);
+    
     const favorite = favorites.find(f => {
-      if (!f.coordinates || !location.coordinates) return false;
+      if (!f?.coordinates || !location.coordinates) return false;
       const fLat = parseFloat(f.coordinates.lat);
       const fLong = parseFloat(f.coordinates.long);
       const locLat = parseFloat(location.coordinates.lat);
       const locLong = parseFloat(location.coordinates.long);
-      return fLat === locLat && fLong === locLong;
+      return Math.abs(fLat - locLat) < 0.0001 && Math.abs(fLong - locLong) < 0.0001;
     });
 
-    // Double encode the JSON to handle special characters
-    const locationJSON = JSON.stringify(location).replace(/"/g, '&quot;');
-    
-    container.innerHTML = `
-      <div class="flex flex-col gap-2 min-w-[200px]">
-        <strong class="text-lg">${location.title || location.name}</strong>
-        <div class="text-sm text-gray-600 truncate">${location.address || ''}</div>
-        <div class="flex flex-col gap-2 mt-2">
-          <textarea 
-            class="note-input w-full px-2 py-1 rounded border border-gray-300" 
-            placeholder="Add notes..."
-            rows="3"
-            ${!isFavorited ? 'disabled' : ''}
-          >${favorite?.notes || ''}</textarea>
-          <div class="flex justify-end items-center gap-2 mt-2">
-            ${isFavorited ? `
-              <button class="save-note-btn px-3 py-1 border rounded hover:opacity-80 cursor-pointer">
-                Save Notes
-              </button>
-            ` : ''}
-            <button class="heart-btn text-xl cursor-pointer">
-              ${isFavorited ? '❤️' : '🤍'}
-            </button>
-          </div>
-        </div>
-      </div>
-    `;
-
-    // Set location data after HTML creation to avoid escaping issues
-    const heartBtn = container.querySelector('.heart-btn');
-    heartBtn.dataset.locationLat = location.coordinates.lat;
-    heartBtn.dataset.locationLong = location.coordinates.long;
-    heartBtn.dataset.locationTitle = location.title || location.name || '';
-    heartBtn.dataset.locationAddress = location.address || '';
-
-    const noteInput = container.querySelector('.note-input');
-    const saveNoteBtn = container.querySelector('.save-note-btn');
-
-    // Update click handler to use separate data attributes
-    heartBtn.addEventListener('click', async function() {
-      const locationData = {
-        title: this.dataset.locationTitle,
-        coordinates: {
-          lat: parseFloat(this.dataset.locationLat),
-          long: parseFloat(this.dataset.locationLong)
-        },
-        address: this.dataset.locationAddress
-      };
-
-      const existingFavorite = favorites.find(f => {
-        if (!f.coordinates || !locationData.coordinates) return false;
-        const fLat = parseFloat(f.coordinates.lat);
-        const fLong = parseFloat(f.coordinates.long);
-        const locLat = parseFloat(locationData.coordinates.lat);
-        const locLong = parseFloat(locationData.coordinates.long);
-        return fLat === locLat && fLong === locLong;
-      });
-      
-      if (!existingFavorite) {
-        const newFavorite = await addFavorite({ 
-          title: locationData.title,
-          notes: noteInput.value,
-          coordinates: locationData.coordinates,
-          address: locationData.address
+    const handleToggleFavorite = async () => {
+      if (!isFavorited) {
+        await addFavorite({ 
+          title: location.title || location.name,
+          notes: favorite?.notes || '',
+          coordinates: location.coordinates,
+          address: location.address
         });
-        if (newFavorite) {
-          this.textContent = '❤️';
-          saveNoteBtn?.classList.remove('hidden');
-        }
       } else {
-        const success = await removeFavorite(existingFavorite._id);
-        if (success) {
-          this.textContent = '🤍';
-          saveNoteBtn?.classList.add('hidden');
-        }
+        await removeFavorite(favorite._id);
       }
-    });
+    };
 
-    if (isFavorited) {
-      saveNoteBtn.addEventListener('click', async () => {
-        const existingFavorite = favorites.find(f => {
-          if (!f.coordinates || !location.coordinates) return false;
-          const fLat = parseFloat(f.coordinates.lat);
-          const fLong = parseFloat(f.coordinates.long);
-          const locLat = parseFloat(location.coordinates.lat);
-          const locLong = parseFloat(location.coordinates.long);
-          return fLat === locLat && fLong === locLong;
-        });
-        
-        if (existingFavorite) {
-          await updateFavorite(existingFavorite._id, { notes: noteInput.value });
-        }
-      });
-    }
+    const handleSaveNotes = async (notes) => {
+      if (favorite) {
+        await updateFavorite(favorite._id, { notes });
+      }
+    };
+
+    root.render(
+      <LocationPopup
+        location={location}
+        isFavorited={isFavorited}
+        onSaveNotes={handleSaveNotes}
+        onToggleFavorite={handleToggleFavorite}
+      />
+    );
+
     return container;
   }
 
@@ -151,7 +130,11 @@ export default function MapView() {
 
     const marker = L.marker([location.coordinates.lat, location.coordinates.long]);
     marker._searchMarker = true;
-    marker.bindPopup(createPopupContent(location, !!existingFavorite))
+    marker.bindPopup(createPopupContent(location, !!existingFavorite), {
+      minWidth: 250,
+      maxWidth: 400,
+      className: 'custom-popup'
+    })
       .addTo(mapInstanceRef.current)
       .openPopup();
   };
@@ -166,11 +149,19 @@ export default function MapView() {
     try {
       const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`);
       const data = await response.json();
-      const results = data.slice(0, 3).map(item => ({
-        title: item.name || item.display_name.split(',')[0].trim(),
-        address: item.display_name,
-        coordinates: { lat: parseFloat(item.lat), long: parseFloat(item.lon) }
-      }));
+      const results = data.slice(0, 3).map(item => {
+        const title = item.name || item.display_name.split(',')[0].trim();
+        const address = item.display_name
+          .split(',')
+          .map(part => part.trim())
+          .filter((part, idx) => idx === 0 ? part !== title : true)
+          .join(', ');
+        return {
+          title,
+          address,
+          coordinates: { lat: parseFloat(item.lat), long: parseFloat(item.lon) }
+        };
+      });
       setSearchResults(results);
     } catch (error) {
       console.error('Error searching location:', error);
@@ -199,8 +190,8 @@ export default function MapView() {
   // Initialize map
   useEffect(() => {
     if (!mapInstanceRef.current && mapRef.current) {
-      const lat = searchParams.get('lat') || 36.1699;
-      const lng = searchParams.get('lng') || -115.1398;
+      const lat = searchParams.get('lat') || 37.77493;
+      const lng = searchParams.get('lng') || -122.41942;
       
       mapInstanceRef.current = L.map(mapRef.current, {
         zoomControl: false
@@ -259,7 +250,11 @@ export default function MapView() {
       });
 
       const marker = L.marker([coords.lat, coords.long])
-        .bindPopup(createPopupContent(favorite || location, !!favorite))
+        .bindPopup(createPopupContent(favorite || location, !!favorite), {
+          minWidth: 250,
+          maxWidth: 400,
+          className: 'custom-popup'
+        })
         .addTo(mapInstanceRef.current);
       marker.openPopup();
       mapInstanceRef.current.setView([coords.lat, coords.long], 14);
@@ -271,7 +266,11 @@ export default function MapView() {
       const coords = getValidLatLng(loc.coordinates);
       if (coords) {
         L.marker(coords)
-          .bindPopup(createPopupContent(loc, true))
+          .bindPopup(createPopupContent(loc, true), {
+            minWidth: 250,
+            maxWidth: 400,
+            className: 'custom-popup'
+          })
           .addTo(mapInstanceRef.current);
       }
     });

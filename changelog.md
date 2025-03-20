@@ -29,6 +29,7 @@ quick action button
 show map button
 fixed mapView centering
 identical searchBars
+fixing pop-ups
 
 - fix number of favorites on profiles
 - fix profile map url
