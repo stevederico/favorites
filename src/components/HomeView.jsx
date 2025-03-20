@@ -80,7 +80,7 @@ export default function HomeView() {
   };
 
   return (
-    <div className="p-6 bg-background min-h-screen">
+    <div className="px-4 py-6 bg-background min-h-screen">
       {/* Search Bar */}
       <div className="relative mb-8">
 
@@ -157,7 +157,7 @@ export default function HomeView() {
                   className="flex flex-col  items-center justify-center gap-2 p-4 rounded-xl bg-blue-500 hover:bg-blue-600 transition-colors cursor-pointer"
                 >
                   <User className="font-medium text-white" size={24} />
-                  <span className="font-medium text-white">My Profile</span>
+                  <span className="font-medium text-white">My Favorites</span>
                 </button>
                 </div>
 
