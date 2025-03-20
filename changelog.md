@@ -17,9 +17,10 @@ read favorites
 started createSheet
 add a search bar to the top, search by place name or city
 create favorites via heart
-- needs to keep my likes in state and the pop-up when needed
-- update favorites
-- delete favorites
+needs to keep my likes in state and the pop-up when needed
+delete favorites
+update notes
+
 - list mode
 - profiles
 - show who you follow

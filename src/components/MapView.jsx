@@ -13,10 +13,14 @@ export default function MapView() {
 
   function createPopupContent(location, isFavorited = false) {
     const container = document.createElement('div');
-    const favorite = favorites.find(f => 
-      f.coordinates.lat === location.coordinates.lat && 
-      f.coordinates.long === location.coordinates.long
-    );
+    const favorite = favorites.find(f => {
+      if (!f.coordinates || !location.coordinates) return false;
+      const fLat = parseFloat(f.coordinates.lat);
+      const fLong = parseFloat(f.coordinates.long);
+      const locLat = parseFloat(location.coordinates.lat);
+      const locLong = parseFloat(location.coordinates.long);
+      return fLat === locLat && fLong === locLong;
+    });
 
     container.innerHTML = `
       <div class="flex flex-col gap-2 min-w-[200px]">
@@ -24,7 +28,7 @@ export default function MapView() {
         <div class="text-sm">${location.address || ''}</div>
         <div class="flex flex-col gap-2 mt-2">
           <textarea 
-            class="note-input px-2 py-1 rounded border border-gray-300 " 
+            class="note-input px-2 py-1 rounded border border-gray-300" 
             placeholder="Add notes..."
             rows="3"
           >${favorite?.notes || ''}</textarea>
@@ -39,23 +43,27 @@ export default function MapView() {
         </div>
       </div>
     `;
+
     const heartBtn = container.querySelector('.heart-btn');
     const noteInput = container.querySelector('.note-input');
     const saveNoteBtn = container.querySelector('.save-note-btn');
 
     heartBtn.addEventListener('click', async function() {
       const locationData = JSON.parse(this.dataset.location);
-
-      const existingFavorite = favorites.find(f => 
-        f.coordinates.lat === locationData.coordinates.lat && 
-        f.coordinates.long === locationData.coordinates.long
-      );
+      const existingFavorite = favorites.find(f => {
+        if (!f.coordinates || !locationData.coordinates) return false;
+        const fLat = parseFloat(f.coordinates.lat);
+        const fLong = parseFloat(f.coordinates.long);
+        const locLat = parseFloat(locationData.coordinates.lat);
+        const locLong = parseFloat(locationData.coordinates.long);
+        return fLat === locLat && fLong === locLong;
+      });
       
       if (!existingFavorite) {
         const newFavorite = await addFavorite({ 
           title: locationData.title || locationData.name,
           notes: noteInput.value,
-          coordinates: locationData.coordinates || locationData.gps,
+          coordinates: locationData.coordinates,
           address: locationData.address
         });
         if (newFavorite) {
@@ -73,10 +81,15 @@ export default function MapView() {
 
     if (isFavorited) {
       saveNoteBtn.addEventListener('click', async () => {
-        const existingFavorite = favorites.find(f => 
-          f.coordinates.lat === location.coordinates.lat && 
-          f.coordinates.long === location.coordinates.long
-        );
+        const existingFavorite = favorites.find(f => {
+          if (!f.coordinates || !location.coordinates) return false;
+          const fLat = parseFloat(f.coordinates.lat);
+          const fLong = parseFloat(f.coordinates.long);
+          const locLat = parseFloat(location.coordinates.lat);
+          const locLong = parseFloat(location.coordinates.long);
+          return fLat === locLat && fLong === locLong;
+        });
+        
         if (existingFavorite) {
           await updateFavorite(existingFavorite._id, { notes: noteInput.value });
         }
@@ -150,7 +163,7 @@ export default function MapView() {
 
   // Handle markers when favorites change and URL params
   useEffect(() => {
-    if (mapInstanceRef.current && favorites.length > 0) {
+    if (mapInstanceRef.current && favorites?.length > 0) {
       mapInstanceRef.current.eachLayer((layer) => {
         if (layer instanceof L.Marker) {
           layer.remove();
@@ -163,10 +176,11 @@ export default function MapView() {
           lat: parseFloat(searchParams.get('lat')),
           long: parseFloat(searchParams.get('lng'))
         };
-        const favorite = favorites.find(f => 
-          f.coordinates.lat === coords.lat && 
-          f.coordinates.long === coords.long
-        );
+        const favorite = favorites.find(f => {
+          if (!f?.coordinates) return false;
+          return f.coordinates.lat === coords.lat && 
+                 f.coordinates.long === coords.long;
+        });
         if (favorite) {
           const marker = L.marker([coords.lat, coords.long])
             .bindPopup(createPopupContent(favorite, true))
@@ -178,6 +192,7 @@ export default function MapView() {
       
       // Show all other favorites
       favorites.forEach(loc => {
+        if (!loc?.coordinates) return;
         const coords = getValidLatLng(loc.coordinates);
         if (coords) {
           L.marker(coords)
