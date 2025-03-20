@@ -34,6 +34,13 @@ export default function HomeView() {
     }
   }, []);
 
+  const isInFavorites = useCallback((result) => {
+    return favorites.some(fav => 
+      fav.coordinates?.lat === result.coordinates.lat && 
+      fav.coordinates?.long === result.coordinates.long
+    );
+  }, [favorites]);
+
   useEffect(() => {
     getFavorites();
   }, []);
@@ -79,18 +86,34 @@ export default function HomeView() {
                 <div className="flex gap-3 items-center">
                   <Link 
                     to={`/app/map?lat=${result.coordinates.lat}&lng=${result.coordinates.long}&title=${encodeURIComponent(result.title)}&address=${encodeURIComponent(result.address)}`} 
-                    className="flex items-center gap-2 px-4 py-2 rounded-full border border-blue-500 hover:bg-blue-600 transition-colors text-blue-500"
+                    className="flex items-center gap-2 px-4 py-2 rounded-full border border-blue-500 hover:bg-blue-600 transition-colors text-blue-500 cursor-pointer"
                   >
                     <MapPin size={16} />
                     <span>View on Map</span>
                   </Link>
-                  <button
-                    onClick={() => addFavorite(result)}
-                    className="flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500 hover:bg-blue-600 transition-colors"
-                  >
-                    <Heart size={16} />
-                    <span>Add to Favorites</span>
-                  </button>
+                  {isInFavorites(result) ? (
+                    <button
+                      onClick={() => {
+                        const existingFav = favorites.find(fav => 
+                          fav.coordinates?.lat === result.coordinates.lat && 
+                          fav.coordinates?.long === result.coordinates.long
+                        );
+                        if (existingFav) removeFavorite(existingFav._id);
+                      }}
+                      className="flex items-center gap-2 px-4 py-2 rounded-full bg-red-500 hover:bg-red-600 transition-colors cursor-pointer"
+                    >
+                      <Heart size={16} />
+                      <span>Remove from Favorites</span>
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => addFavorite(result)}
+                      className="flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500 hover:bg-blue-600 transition-colors cursor-pointer"
+                    >
+                      <Heart size={16} />
+                      <span>Add to Favorites</span>
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
@@ -100,13 +123,13 @@ export default function HomeView() {
         <>
           {/* Quick Actions */}
           <div className="grid grid-cols-2 gap-4 mb-8">
-            <button className="flex items-center justify-center gap-2 p-4 rounded-xl bg-purple-500 hover:bg-purple-600 transition-colors">
+            <button className="flex items-center justify-center gap-2 p-4 rounded-xl bg-purple-500 hover:bg-purple-600 transition-colors cursor-pointer">
               <Users size={24} />
               <span className="font-medium">Profiles</span>
             </button>
             <button 
               onClick={() => setIsMyFavoritesOpen(true)}
-              className="flex items-center justify-center gap-2 p-4 rounded-xl bg-blue-500 hover:bg-blue-600 transition-colors"
+              className="flex items-center justify-center gap-2 p-4 rounded-xl bg-blue-500 hover:bg-blue-600 transition-colors cursor-pointer"
             >
               <MapPin size={24} />
               <span className="font-medium">My Places</span>
@@ -142,14 +165,14 @@ export default function HomeView() {
                   <div className="flex justify-between items-center mt-auto pt-4">
                     <Link 
                       to={`/app/map?lat=${favorite.coordinates?.lat}&lng=${favorite.coordinates?.long}`} 
-                      className="flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500 hover:bg-blue-600 transition-colors"
+                      className="flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500 hover:bg-blue-600 transition-colors cursor-pointer"
                     >
                       <MapPin size={16} />
                       <span>View Map</span>
                     </Link>
                     <button
                       onClick={() => removeFavorite(favorite._id)}
-                      className="p-2 hover:bg-background rounded-full transition-colors"
+                      className="p-2 hover:bg-background rounded-full transition-colors cursor-pointer"
                     >
                       ❌
                     </button>
