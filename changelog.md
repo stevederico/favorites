@@ -25,7 +25,7 @@ Improved search on MapView
 Search bar homeView
 recently added
 profiles homeView
-
+quick action button
 
 
 - show map button
@@ -58,6 +58,8 @@ TEMPLATE
 - package.json
     - set name
     - set version    
+    - prod script
+            "prod": "vite build --mode production; cp -r ./dist/* ../../bixby-proxy/public/baby.bixbyapps.com"
 - set primary color in styles.css
 - remove readme.md
 - deno install
