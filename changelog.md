@@ -59,7 +59,7 @@ TEMPLATE
     - set name
     - set version    
     - prod script
-            "prod": "vite build --mode production; cp -r ./dist/* ../../bixby-proxy/public/baby.bixbyapps.com"
+            "prod": "vite build --mode production; cp -r ./dist/* ../bixby-proxy/public/food.bixbyapps.com"
 - set primary color in styles.css
 - remove readme.md
 - deno install
