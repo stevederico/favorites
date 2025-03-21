@@ -22,6 +22,7 @@ import { getCurrentUser } from '@stevederico/skateboard-ui/Utilities';
 import { ContextProvider, getState } from './context.jsx';
 import { FavoritesProvider } from './contexts/FavoritesContext';
 import constants from './constants.json';
+import MetaTags from './components/MetaTags';
 
 import HomeView from './components/HomeView.jsx'
 import MapView from './components/MapView.jsx'
@@ -54,6 +55,33 @@ const App = () => {
   const navigate = useNavigate();
   const { state, dispatch } = getState();
 
+  const getMetaData = () => {
+    const path = location.pathname;
+    const baseTitle = constants.appName;
+    
+    if (path.includes('/app/map')) {
+      return {
+        title: `Map - ${baseTitle}`,
+        description: 'Explore and discover favorite places on the map'
+      };
+    } else if (path.includes('/app/home')) {
+      return {
+        title: `Home - ${baseTitle}`,
+        description: 'Your personal collection of favorite places'
+      };
+    } else if (path.match(/\/app\/[^/]+$/)) {
+      return {
+        title: `Profile - ${baseTitle}`,
+        description: 'View user profile and their favorite places'
+      };
+    }
+    
+    return {
+      title: baseTitle,
+      description: 'Share and discover your favorite places'
+    };
+  };
+
   useEffect(() => {
     document.title = constants.appName;
     const appStart = async () => {
@@ -78,9 +106,11 @@ const App = () => {
     appStart();
   }, [location.pathname, navigate, dispatch]);
 
+  const metaData = getMetaData();
+
   return (
     <FavoritesProvider>
-      
+      <MetaTags {...metaData} />
       <Routes>
         <Route element={<Layout />}>
           <Route path="/console" element={<Navigate to="/app" replace />} />
