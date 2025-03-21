@@ -1,72 +1,81 @@
-import { useEffect } from 'react';
-import { X } from 'lucide-react';
-import { useFavorites } from '../contexts/FavoritesContext';
-import LocationCard from './LocationCard';
+import { useEffect, useState } from 'react';
+import { MapPin } from 'lucide-react';
+import { useParams, Link } from 'react-router-dom';
+import { getBackendURL, getCookie } from '@stevederico/skateboard-ui/Utilities';
+import { getState } from '../context';
+import Header from '@stevederico/skateboard-ui/Header';
 
-export default function ProfileView({ isOpen, onClose, profile }) {
-  const { favorites, getFavorites, clearFavorites } = useFavorites();
-
-  useEffect(() => {
-    if (isOpen && profile) {
-      getFavorites(profile._id);
-    }
-    return () => {
-      clearFavorites();
-    };
-  }, [isOpen, profile]);
+export default function ProfileView() {
+  const [favorites, setFavorites] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const { username } = useParams();
+  const { state } = getState();
 
   useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-    return () => {
-      document.body.style.overflow = 'unset';
+    const fetchFavorites = async () => {
+      if (!username) return;
+      setIsLoading(true);
+      try {
+        const cleanUsername = username.replace('@', '');
+        const response = await fetch(`${getBackendURL()}/favorites?username=${cleanUsername}`, {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${getCookie('token')}`
+          }
+        });
+        if (!response.ok) throw new Error('Failed to fetch favorites');
+        const data = await response.json();
+        setFavorites(data);
+      } catch (error) {
+        console.error('Error:', error);
+      } finally {
+        setIsLoading(false);
+      }
     };
-  }, [isOpen]);
 
-  if (!isOpen) return null;
+    fetchFavorites();
+  }, [username]);
+
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => document.body.style.overflow = 'unset';
+  }, []);
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50">
-      <div 
-        className={`fixed bottom-0 left-0 right-0 bg-background rounded-t-3xl shadow-lg transform transition-transform duration-300 ease-out flex flex-col h-[98vh] ${
-          isOpen ? 'translate-y-0' : 'translate-y-full'
-        }`}
-      >
-        {/* Header */}
-        <div className="flex justify-between items-center p-4 border-b border-gray-200">
-          <h2 className="text-xl font-bold capitalize">{profile ? `${profile.name}'s Favorites` : 'My Favorites'}</h2>
-          <button 
-            onClick={onClose}
-            className="p-2 hover:bg-accent rounded-full transition-colors cursor-pointer"
-          >
-            <X size={24} />
-          </button>
-        </div>
-
-        {/* Favorites List */}
-        <div className="flex-1 overflow-y-auto">
-          <div className="p-4 space-y-4 h-full">
-            {favorites.length === 0 ? (
-              <div className="flex items-center justify-center h-full">
-                <p className="opacity-70"></p>
+    <div className="bg-background min-h-screen">
+      <div className="flex flex-col h-full">
+        <Header className="capitalize" title={`${username}'s Favorites`} />
+        
+        <main className="flex-1 overflow-y-auto">
+          <div className="container mx-auto p-4 space-y-4">
+            {isLoading ? (
+              <div className="flex items-center justify-center min-h-[50vh]">
+                <div className="animate-pulse">Loading...</div>
+              </div>
+            ) : favorites.length === 0 ? (
+              <div className="flex items-center justify-center min-h-[50vh]">
+                <p className="opacity-70">No favorites found</p>
               </div>
             ) : (
-              <>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {favorites.map(favorite => (
-                  <LocationCard 
-                    key={favorite._id} 
-                    location={favorite}
-                    showRemove={!profile}
-                  />
+                  <div key={favorite._id} className="bg-accent rounded-xl shadow-md p-4 transition-all hover:scale-[1.02]">
+                    <h3 className="font-semibold text-lg mb-2">{favorite.title}</h3>
+                    <p className="text-sm mb-4 opacity-70">{favorite.address}</p>
+                    <Link
+                      to={`/app/map?lat=${favorite.coordinates?.lat}&lng=${favorite.coordinates?.long}&title=${encodeURIComponent(favorite.title)}&address=${encodeURIComponent(favorite.address || '')}`}
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent hover:bg-accent/80 border border-accent transition-colors"
+                    >
+                      <MapPin size={16} />
+                      <span>View on Map</span>
+                    </Link>
+                  </div>
                 ))}
-                <div className="py-44" />
-              </>
+              </div>
             )}
+            <div className="h-24" />
           </div>
-        </div>
+        </main>
       </div>
     </div>
   );

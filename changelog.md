@@ -37,6 +37,8 @@ fixed leaflet pins
 0.1.1
 new pop-ups on mobile
 0.1.2
+fixed inital load favs
+fixed profile urls
 
 - add profile map url
 - rank your favorites
