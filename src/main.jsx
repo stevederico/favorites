@@ -87,7 +87,7 @@ const App = () => {
           <Route path="/app" element={<ProtectedRoute />}>
             <Route index element={<Navigate to="home" replace />} />
             <Route path=":username" element={<ProfileView />} />
-            <Route path="home" element={<HomeView />} />
+            <Route path="home" element={<MapView />} />
             <Route path="map" element={<MapView />} />
             <Route path="settings" element={<SettingsView />} />
             <Route path="stripe" element={<StripeView />} />

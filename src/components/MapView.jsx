@@ -2,8 +2,12 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useFavorites } from '../contexts/FavoritesContext';
 import { Search, MapPin, Heart } from 'lucide-react';
-import { createPortal } from 'react-dom';
+
 import { createRoot } from 'react-dom/client';
+import { getState } from '../context';
+import { getBackendURL, getCookie } from '@stevederico/skateboard-ui/Utilities';
+import { useParams, Link } from 'react-router-dom';
+
 import * as L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -25,32 +29,32 @@ const LocationPopup = ({ location, isFavorited, onSaveNotes, onToggleFavorite })
   useEffect(() => {
     setNotes(location.notes || '');
   }, [location.notes]);
-  
+
   const handleSave = () => {
     onSaveNotes(notes);
   };
-  
+
   return (
     <div className="min-w-[250px] max-w-[150px] flex flex-col gap-2">
       <div className="flex flex-col items-center justify-between">
-      
-          <button 
-            className="p-2 hover:bg-accent/10 rounded-full transition-colors"
-            onClick={onToggleFavorite}
-            aria-label={isFavorited ? 'Remove from favorites' : 'Add to favorites'}
-          >
-            <Heart 
-              className={`w-10 h-10 ${isFavorited ? 'fill-current text-red-500' : 'text-accent/70'}`}
-            />
-          </button>
-          <strong className="text-lg font-semibold break-words">{location.title || location.name}</strong>    <div className="flex justify-end mt-1">
+
+        <button
+          className="p-2 hover:bg-accent/10 rounded-full transition-colors"
+          onClick={onToggleFavorite}
+          aria-label={isFavorited ? 'Remove from favorites' : 'Add to favorites'}
+        >
+          <Heart
+            className={`w-10 h-10 ${isFavorited ? 'fill-current text-red-500' : 'text-accent/70'}`}
+          />
+        </button>
+        <strong className="text-lg font-semibold break-words">{location.title || location.name}</strong>    <div className="flex justify-end mt-1">
         </div>
-        </div>
-      
+      </div>
+
       <div className="text-sm opacity-70 break-words">{location.address || ''}</div>
       <div className="flex flex-col gap-2 mt-1">
-        <textarea 
-          className="w-full max-h-[35px] px-3 py-2 rounded-lg border border-accent/20 resize-none focus:outline-none focus:ring-1 focus:ring-accent" 
+        <textarea
+          className="w-full max-h-[35px] px-3 py-2 rounded-lg border border-accent/20 resize-none focus:outline-none focus:ring-1 focus:ring-accent"
           placeholder="Add notes..."
           rows="3"
           disabled={!isFavorited}
@@ -58,25 +62,33 @@ const LocationPopup = ({ location, isFavorited, onSaveNotes, onToggleFavorite })
           onChange={(e) => setNotes(e.target.value)}
           onBlur={handleSave}
         />
-     
+
       </div>
     </div>
   );
 };
 
 export default function MapView() {
+  const { state } = getState();
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchParams] = useSearchParams();
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
-  const { favorites, getFavorites, addFavorite, removeFavorite, updateFavorite } = useFavorites();
+  const { favorites, getFavorites, addFavorite, removeFavorite, updateFavorite, getFavoritesUserName } = useFavorites();
+
+const username = searchParams.get('username');
+
+  useEffect(() => {
+    console.log("USERNAME: ", username)
+    getFavoritesUserName(username)
+  }, [username]);
 
   function createPopupContent(location, isFavorited = false) {
     const container = document.createElement('div');
     const root = createRoot(container);
-    
+
     const favorite = favorites.find(f => {
       if (!f?.coordinates || !location.coordinates) return false;
       const fLat = parseFloat(f.coordinates.lat);
@@ -88,7 +100,7 @@ export default function MapView() {
 
     const handleToggleFavorite = async () => {
       if (!isFavorited) {
-        await addFavorite({ 
+        await addFavorite({
           title: location.title || location.name,
           notes: favorite?.notes || '',
           coordinates: location.coordinates,
@@ -124,19 +136,19 @@ export default function MapView() {
   const handleResultClick = (result) => {
     setSearchQuery('');
     setSearchResults([]);
-    
+
     const location = {
       title: result.title,
       coordinates: result.coordinates,
       address: result.address
     };
-    
+
     mapInstanceRef.current.setView([location.coordinates.lat, location.coordinates.long], 14);
-    const existingFavorite = favorites.find(f => 
-      f.coordinates?.lat === location.coordinates.lat && 
+    const existingFavorite = favorites.find(f =>
+      f.coordinates?.lat === location.coordinates.lat &&
       f.coordinates?.long === location.coordinates.long
     );
-    
+
     // Clear existing search markers
     mapInstanceRef.current.eachLayer((layer) => {
       if (layer instanceof L.Marker && layer._searchMarker) {
@@ -160,7 +172,7 @@ export default function MapView() {
       setSearchResults([]);
       return;
     }
-    
+
     setIsSearching(true);
     try {
       const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`);
@@ -208,16 +220,21 @@ export default function MapView() {
     if (!mapInstanceRef.current && mapRef.current) {
       const lat = searchParams.get('lat') || 37.77493;
       const lng = searchParams.get('lng') || -122.41942;
-      
+
       mapInstanceRef.current = L.map(mapRef.current, {
         zoomControl: false
       }).setView([lat, lng], 14);
-      
+
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap contributors'
       }).addTo(mapInstanceRef.current);
 
-      getFavorites();
+
+      if (!username) {
+        console.log("INIT")
+        getFavorites();
+      }
+
     }
 
     return () => {
@@ -226,12 +243,12 @@ export default function MapView() {
         mapInstanceRef.current = null;
       }
     };
-  }, []);
+  }, [state.user]);
 
   // Handle markers when favorites change and URL params
   useEffect(() => {
     if (!mapInstanceRef.current) return;
-    
+
     // Clear existing markers
     mapInstanceRef.current.eachLayer((layer) => {
       if (layer instanceof L.Marker) {
@@ -245,7 +262,7 @@ export default function MapView() {
         lat: parseFloat(searchParams.get('lat')),
         long: parseFloat(searchParams.get('lng'))
       };
-      
+
       const title = searchParams.get('title') ? decodeURIComponent(searchParams.get('title')) : 'Location';
       const address = searchParams.get('address') ? decodeURIComponent(searchParams.get('address')) : '';
 
@@ -261,8 +278,8 @@ export default function MapView() {
         if (!f?.coordinates) return false;
         const fLat = parseFloat(f.coordinates.lat);
         const fLong = parseFloat(f.coordinates.long);
-        return Math.abs(fLat - coords.lat) < 0.0001 && 
-               Math.abs(fLong - coords.long) < 0.0001;
+        return Math.abs(fLat - coords.lat) < 0.0001 &&
+          Math.abs(fLong - coords.long) < 0.0001;
       });
 
       const marker = L.marker([coords.lat, coords.long])
@@ -293,18 +310,18 @@ export default function MapView() {
   }, [favorites, searchParams]);
 
   return (
-<div className="w-screen h-screen relative flex flex-col">
-  <div className="w-full absolute top-4 z-[1000]  px-2 pt-2">
-    <div className="relative md:w-[calc(100vw-190px)] max-w-full mx-2">
-      <input
-        type="text"
-        value={searchQuery}
-        onChange={handleSearchInput}
-        placeholder="Search places..."
-        className="w-full pl-4 pr-12 py-3 rounded-xl bg-accent shadow-lg border border-gray-300 focus:outline-none focus:ring-2"
-      />
-      <Search className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-          
+    <div className="w-screen h-screen relative flex flex-col">
+      <div className="w-full absolute top-4 z-[1000]  px-2 pt-2">
+        <div className="relative md:w-[calc(100vw-190px)] max-w-full mx-2">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={handleSearchInput}
+            placeholder="Search places..."
+            className="w-full pl-4 pr-12 py-3 rounded-xl bg-accent shadow-lg border border-gray-300 focus:outline-none focus:ring-2"
+          />
+          <Search className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+
           {/* Search Results Dropdown */}
           {(searchResults.length > 0 || isSearching) && searchQuery && (
             <div className="absolute w-full mt-2 rounded-lg bg-accent border border-gray-300 shadow-lg overflow-hidden">

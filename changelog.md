@@ -40,8 +40,9 @@ new pop-ups on mobile
 fixed inital load favs
 fixed profile urls
 added public accessible urls **
-
-- add profile map url
+fixed scrolling on profiles
+added profile map url
+0.1.3
 - rank your favorites
 - full social feed, fix just now
 - add profiles for people/celebs and fill it out for them, normand and david chang

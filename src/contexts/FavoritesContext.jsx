@@ -29,6 +29,24 @@ export function FavoritesProvider({ children }) {
     }
   }
 
+  async function getFavoritesUserName(username) {
+
+    try {
+      const response = await fetch(`${getBackendURL()}/favorites?username=${username}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${getCookie('token')}`
+        }
+      });
+      const data = await response.json();
+      setFavorites(data);
+      return data;
+    } catch (error) {
+      console.error('Error fetching favorites:', error);
+      return [];
+    }
+  }
+
   const clearFavorites = () => {
     setFavorites([]);
   };
@@ -93,7 +111,7 @@ export function FavoritesProvider({ children }) {
   }
 
   return (
-    <FavoritesContext.Provider value={{ favorites, getFavorites, addFavorite, removeFavorite, updateFavorite, clearFavorites }}>
+    <FavoritesContext.Provider value={{ favorites, getFavorites, addFavorite, removeFavorite, updateFavorite, clearFavorites, getFavoritesUserName }}>
       {children}
     </FavoritesContext.Provider>
   );
