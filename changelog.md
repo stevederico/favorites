@@ -43,8 +43,13 @@ added public accessible urls **
 fixed scrolling on profiles
 added profile map url
 0.1.3
+link to profile map from profile list
+fixed just now
+added getFavoritesUserName to Favcontext
+
+- edit my favorites
 - rank your favorites
-- full social feed, fix just now
+- add social feed
 - add profiles for people/celebs and fill it out for them, normand and david chang
 
 

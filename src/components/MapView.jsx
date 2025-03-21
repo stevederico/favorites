@@ -77,11 +77,9 @@ export default function MapView() {
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const { favorites, getFavorites, addFavorite, removeFavorite, updateFavorite, getFavoritesUserName } = useFavorites();
-
-const username = searchParams.get('username');
+  const username = searchParams.get('username');
 
   useEffect(() => {
-    console.log("USERNAME: ", username)
     getFavoritesUserName(username)
   }, [username]);
 

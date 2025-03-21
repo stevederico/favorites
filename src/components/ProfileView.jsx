@@ -1,52 +1,29 @@
 import { useEffect, useState } from 'react';
 import { MapPin } from 'lucide-react';
-import { useParams, Link } from 'react-router-dom';
-import { getBackendURL, getCookie } from '@stevederico/skateboard-ui/Utilities';
-import { getState } from '../context';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import Header from '@stevederico/skateboard-ui/Header';
+import { useFavorites } from '../contexts/FavoritesContext';
+
 
 export default function ProfileView() {
-  const [favorites, setFavorites] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+
   const { username } = useParams();
-  const { state } = getState();
-
+  const navigate = useNavigate();
+  const { favorites, getFavorites, addFavorite, removeFavorite, updateFavorite, getFavoritesUserName } = useFavorites();
+  
   useEffect(() => {
-    const fetchFavorites = async () => {
-      if (!username) return;
-      setIsLoading(true);
-      try {
-        const cleanUsername = username.replace('@', '');
-        const response = await fetch(`${getBackendURL()}/favorites?username=${cleanUsername}`, {
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${getCookie('token')}`
-          }
-        });
-        if (!response.ok) throw new Error('Failed to fetch favorites');
-        const data = await response.json();
-        setFavorites(data);
-      } catch (error) {
-        console.error('Error:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchFavorites();
+    getFavoritesUserName(username)
   }, [username]);
 
   return (
     <div className="flex flex-col h-screen bg-background">
-      <Header className="capitalize" title={`${username}'s Favorites`} />
+      <Header className="capitalize" title={`${username}'s Favorites`} buttonTitle={`Show in Map`} onButtonTitleClick={()=>{
+        navigate(`/app/map?username=${username}`)
+      }} />
       
       <main className="flex-1 overflow-y-auto">
         <div className="container mx-auto p-4 space-y-4">
-          {isLoading ? (
-            <div className="flex items-center justify-center min-h-[50vh]">
-              <div className="animate-pulse">Loading...</div>
-            </div>
-          ) : favorites.length === 0 ? (
+          {favorites.length === 0 ? (
             <div className="flex items-center justify-center min-h-[50vh]">
               <p className="opacity-70">No favorites found</p>
             </div>

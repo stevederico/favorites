@@ -3,7 +3,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useFavorites } from '../contexts/FavoritesContext';
 import { Search, User, MapPin, Clock, Heart, UserCircle } from 'lucide-react';
-import { getBackendURL, getCookie } from '@stevederico/skateboard-ui/Utilities';
+import { getBackendURL, getCookie, timestampToString } from '@stevederico/skateboard-ui/Utilities';
 import { getState } from '../context';
 
 /**
@@ -212,7 +212,7 @@ export default function HomeView() {
                     <Heart size={20} className="text-red-500" />
                     <span>{favorite.title}</span>
                   </div>
-                  <span className="text-sm opacity-70">Just now</span>
+                  <span className="text-sm opacity-70">{timestampToString(favorite.created_at, 'ago')}</span>
                 </div>
               ))}
             </div>
