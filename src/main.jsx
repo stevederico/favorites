@@ -93,6 +93,7 @@ const App = () => {
             <Route path="stripe" element={<StripeView />} />
           </Route>
         </Route>
+        {/* <Route path=":username" element={<ProfileView />} /> */}
         <Route path="/" element={<LandingView />} />
         <Route path="/signin" element={<SignInView />} />
         <Route path="/signup" element={<SignUpView />} />
