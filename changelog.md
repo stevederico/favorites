@@ -47,6 +47,8 @@ link to profile map from profile list
 fixed just now
 added getFavoritesUserName to Favcontext
 0.1.4
+added metaTags
+- start location should be their first favorite
 
 - fix recently added
 - add placeId to all existing favs

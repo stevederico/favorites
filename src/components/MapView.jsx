@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useParams } from 'react-router-dom';
 import { Search, MapPin, Heart } from 'lucide-react';
 import { createRoot } from 'react-dom/client';
 import { getState } from '../context';
@@ -7,12 +7,9 @@ import { useFavorites } from '../contexts/FavoritesContext';
 
 import * as L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-
 import iconRetina from 'leaflet/dist/images/marker-icon-2x.png';
 import icon from 'leaflet/dist/images/marker-icon.png';
 import shadow from 'leaflet/dist/images/marker-shadow.png';
-
-
 
 delete L.Icon.Default.prototype._getIconUrl;
 
@@ -78,11 +75,18 @@ export default function MapView() {
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const { favorites, getFavorites, addFavorite, removeFavorite, updateFavorite, getFavoritesUserName, isInFavorites, searchLocations } = useFavorites();
-  const username = searchParams.get('username');
+  const qUsername = searchParams.get('username');
+  const { username } = useParams();
 
   useEffect(() => {
-    getFavoritesUserName(username)
-  }, [username]);
+    // If we have a username either from params or query, get their favorites
+    if (username || qUsername) {
+      getFavoritesUserName(username || qUsername);
+    } else {
+      // Otherwise get the current user's favorites
+      getFavorites();
+    }
+  }, [username, qUsername]);
 
   function createPopupContent(location, isFavorited = false) {
     const container = document.createElement('div');
@@ -243,7 +247,7 @@ export default function MapView() {
       }).addTo(mapInstanceRef.current);
 
 
-      if (!username) {
+      if (!qUsername && !username) {
         getFavorites();
       }
 

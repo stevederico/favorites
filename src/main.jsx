@@ -119,11 +119,11 @@ const App = () => {
             <Route path=":username" element={<ProfileView />} />
             <Route path="home" element={<HomeView />} />
             <Route path="map" element={<MapView />} />
+            <Route path="map/:username" element={<MapView />} />
             <Route path="settings" element={<SettingsView />} />
             <Route path="stripe" element={<StripeView />} />
           </Route>
         </Route>
-        {/* <Route path=":username" element={<ProfileView />} /> */}
         <Route path="/" element={<LandingView />} />
         <Route path="/signin" element={<SignInView />} />
         <Route path="/signup" element={<SignUpView />} />

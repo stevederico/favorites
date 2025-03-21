@@ -208,7 +208,7 @@ export default function HomeView() {
               {profiles.map(profile => (
                 <Link
                   key={profile._id}
-                  to={`/app/${profile.name.toLowerCase()}`}
+                  to={`/app/map/${profile.name.toLowerCase()}`}
                   className="bg-accent rounded-xl shadow-md p-6 hover:shadow-lg transition-all cursor-pointer"
                 >
                   <div className="flex items-center gap-4">
