@@ -232,25 +232,16 @@ export default function MapView() {
     return [lat, lng];
   }
 
-  // Initialize map
+  // Initialize map with base layer only
   useEffect(() => {
     if (!mapInstanceRef.current && mapRef.current) {
-      const lat = searchParams.get('lat') || 37.77493;
-      const lng = searchParams.get('lng') || -122.41942;
-
       mapInstanceRef.current = L.map(mapRef.current, {
         zoomControl: false
-      }).setView([lat, lng], 14);
+      }).setView([37.77493, -122.41942], 14);
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap contributors'
       }).addTo(mapInstanceRef.current);
-
-
-      if (!qUsername && !username) {
-        getFavorites();
-      }
-
     }
 
     return () => {
@@ -259,11 +250,11 @@ export default function MapView() {
         mapInstanceRef.current = null;
       }
     };
-  }, [state.user]);
+  }, [mapRef.current]);
 
-  // Handle markers when favorites change and URL params
+  // Handle map view and markers separately
   useEffect(() => {
-    if (!mapInstanceRef.current) return;
+    if (!mapInstanceRef.current || !favorites) return;
 
     // Clear existing markers
     mapInstanceRef.current.eachLayer((layer) => {
@@ -272,38 +263,19 @@ export default function MapView() {
       }
     });
 
-    // Handle URL parameters and show search pin
+    // Set view based on URL params or first favorite
     if (searchParams.get('lat') && searchParams.get('lng')) {
-      const coords = {
-        lat: parseFloat(searchParams.get('lat')),
-        long: parseFloat(searchParams.get('lng'))
-      };
-
-      const title = searchParams.get('title') ? decodeURIComponent(searchParams.get('title')) : 'Location';
-      const address = searchParams.get('address') ? decodeURIComponent(searchParams.get('address')) : '';
-
-      // Always show a pin for the search coordinates
-      const location = {
-        title,
-        coordinates: coords,
-        address
-      };
-
-      // Check if this is a favorite using the service function
-      const favorite = favorites.find(f => isInFavorites(location, [f]));
-
-      const marker = L.marker([coords.lat, coords.long])
-        .bindPopup(createPopupContent(favorite || location, !!favorite), {
-          minWidth: 250,
-          maxWidth: 400,
-          className: 'custom-popup'
-        })
-        .addTo(mapInstanceRef.current);
-      marker.openPopup();
-      mapInstanceRef.current.setView([coords.lat, coords.long], 14);
+      const lat = parseFloat(searchParams.get('lat'));
+      const lng = parseFloat(searchParams.get('lng'));
+      mapInstanceRef.current.setView([lat, lng], 14);
+    } else if (favorites.length > 0 && favorites[0].coordinates) {
+      const coords = getValidLatLng(favorites[0].coordinates);
+      if (coords) {
+        mapInstanceRef.current.setView(coords, 14);
+      }
     }
 
-    // Show all other favorites
+    // Add all favorites as markers
     favorites.forEach(loc => {
       if (!loc?.coordinates) return;
       const coords = getValidLatLng(loc.coordinates);
@@ -317,7 +289,28 @@ export default function MapView() {
           .addTo(mapInstanceRef.current);
       }
     });
-  }, [favorites, searchParams]);
+
+    // Handle URL parameter pin last to ensure it's on top
+    if (searchParams.get('lat') && searchParams.get('lng')) {
+      const coords = {
+        lat: parseFloat(searchParams.get('lat')),
+        long: parseFloat(searchParams.get('lng'))
+      };
+      const title = searchParams.get('title') ? decodeURIComponent(searchParams.get('title')) : 'Location';
+      const address = searchParams.get('address') ? decodeURIComponent(searchParams.get('address')) : '';
+      const location = { title, coordinates: coords, address };
+      const favorite = favorites.find(f => isInFavorites(location, [f]));
+
+      const marker = L.marker([coords.lat, coords.long])
+        .bindPopup(createPopupContent(favorite || location, !!favorite), {
+          minWidth: 250,
+          maxWidth: 400,
+          className: 'custom-popup'
+        })
+        .addTo(mapInstanceRef.current);
+      marker.openPopup();
+    }
+  }, [favorites, searchParams, username, qUsername]); // Added username dependencies
 
   return (
     <div className="w-screen h-screen relative flex flex-col">

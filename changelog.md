@@ -48,7 +48,9 @@ fixed just now
 added getFavoritesUserName to Favcontext
 0.1.4
 added metaTags
-- start location should be their first favorite
+fixed map urls /app/map/steve
+start location should be their first favorite
+0.1.5
 
 - fix recently added
 - add placeId to all existing favs
