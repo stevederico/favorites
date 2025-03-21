@@ -31,12 +31,26 @@ const LocationPopup = ({ location, isFavorited, onSaveNotes, onToggleFavorite })
   };
   
   return (
-    <div className="min-w-[250px] max-w-[400px] flex flex-col gap-2">
-      <strong className="text-lg font-semibold break-words">{location.title || location.name}</strong>
+    <div className="min-w-[250px] max-w-[150px] flex flex-col gap-2">
+      <div className="flex flex-col items-center justify-between">
+      
+          <button 
+            className="p-2 hover:bg-accent/10 rounded-full transition-colors"
+            onClick={onToggleFavorite}
+            aria-label={isFavorited ? 'Remove from favorites' : 'Add to favorites'}
+          >
+            <Heart 
+              className={`w-10 h-10 ${isFavorited ? 'fill-current text-red-500' : 'text-accent/70'}`}
+            />
+          </button>
+          <strong className="text-lg font-semibold break-words">{location.title || location.name}</strong>    <div className="flex justify-end mt-1">
+        </div>
+        </div>
+      
       <div className="text-sm opacity-70 break-words">{location.address || ''}</div>
       <div className="flex flex-col gap-2 mt-1">
         <textarea 
-          className="w-full min-h-[80px] px-3 py-2 rounded-lg border border-accent/20 resize-none focus:outline-none focus:ring-1 focus:ring-accent" 
+          className="w-full max-h-[35px] px-3 py-2 rounded-lg border border-accent/20 resize-none focus:outline-none focus:ring-1 focus:ring-accent" 
           placeholder="Add notes..."
           rows="3"
           disabled={!isFavorited}
@@ -44,17 +58,7 @@ const LocationPopup = ({ location, isFavorited, onSaveNotes, onToggleFavorite })
           onChange={(e) => setNotes(e.target.value)}
           onBlur={handleSave}
         />
-        <div className="flex justify-end mt-1">
-          <button 
-            className="p-2 hover:bg-accent/10 rounded-full transition-colors"
-            onClick={onToggleFavorite}
-            aria-label={isFavorited ? 'Remove from favorites' : 'Add to favorites'}
-          >
-            <Heart 
-              className={`w-6 h-6 ${isFavorited ? 'fill-current text-red-500' : 'text-accent/70'}`}
-            />
-          </button>
-        </div>
+     
       </div>
     </div>
   );

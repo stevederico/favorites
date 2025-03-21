@@ -33,7 +33,10 @@ fixing pop-ups
 show other profile favorites
 working profile url /app/@frank
 0.1.0
-try to fix leaflet pins
+fixed leaflet pins
+0.1.1
+new pop-ups on mobile
+0.1.2
 
 - add profile map url
 - rank your favorites
