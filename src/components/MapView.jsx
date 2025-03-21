@@ -244,7 +244,6 @@ export default function MapView() {
 
 
       if (!username) {
-        console.log("INIT")
         getFavorites();
       }
 
