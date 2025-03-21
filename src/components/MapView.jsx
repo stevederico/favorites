@@ -1,11 +1,9 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { useFavorites } from '../contexts/FavoritesContext';
 import { Search, MapPin, Heart } from 'lucide-react';
 import { createRoot } from 'react-dom/client';
 import { getState } from '../context';
-import { getBackendURL, getCookie } from '@stevederico/skateboard-ui/Utilities';
-import { useParams, Link } from 'react-router-dom';
+import { useFavorites } from '../contexts/FavoritesContext';
 
 import * as L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -14,7 +12,7 @@ import iconRetina from 'leaflet/dist/images/marker-icon-2x.png';
 import icon from 'leaflet/dist/images/marker-icon.png';
 import shadow from 'leaflet/dist/images/marker-shadow.png';
 
-import { searchLocations, isInFavorites } from '../services/locationService';
+
 
 delete L.Icon.Default.prototype._getIconUrl;
 
@@ -79,7 +77,7 @@ export default function MapView() {
   const [searchParams] = useSearchParams();
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
-  const { favorites, getFavorites, addFavorite, removeFavorite, updateFavorite, getFavoritesUserName } = useFavorites();
+  const { favorites, getFavorites, addFavorite, removeFavorite, updateFavorite, getFavoritesUserName, isInFavorites, searchLocations } = useFavorites();
   const username = searchParams.get('username');
 
   useEffect(() => {

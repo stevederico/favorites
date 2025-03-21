@@ -5,7 +5,7 @@ import { useFavorites } from '../contexts/FavoritesContext';
 import { Search, User, MapPin, Clock, Heart, UserCircle } from 'lucide-react';
 import { getBackendURL, getCookie, timestampToString } from '@stevederico/skateboard-ui/Utilities';
 import { getState } from '../context';
-import { searchLocations, isInFavorites } from '../services/locationService';
+
 
 /**
  * HomeView Component
@@ -13,8 +13,7 @@ import { searchLocations, isInFavorites } from '../services/locationService';
  * Displays search functionality, favorites, and user profiles
  */
 export default function HomeView() {
-  // Access favorites context for global state management
-  const { favorites, getFavorites, removeFavorite, addFavorite } = useFavorites();
+  const { favorites, getFavorites, removeFavorite, addFavorite, searchLocations, isInFavorites } = useFavorites();
   
   // Local state management
   const [searchQuery, setSearchQuery] = useState(''); // Current search input
