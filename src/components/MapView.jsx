@@ -2,7 +2,6 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useFavorites } from '../contexts/FavoritesContext';
 import { Search, MapPin, Heart } from 'lucide-react';
-
 import { createRoot } from 'react-dom/client';
 import { getState } from '../context';
 import { getBackendURL, getCookie } from '@stevederico/skateboard-ui/Utilities';
@@ -14,6 +13,8 @@ import 'leaflet/dist/leaflet.css';
 import iconRetina from 'leaflet/dist/images/marker-icon-2x.png';
 import icon from 'leaflet/dist/images/marker-icon.png';
 import shadow from 'leaflet/dist/images/marker-shadow.png';
+
+import { searchLocations, isInFavorites } from '../services/locationService';
 
 delete L.Icon.Default.prototype._getIconUrl;
 
@@ -30,14 +31,17 @@ const LocationPopup = ({ location, isFavorited, onSaveNotes, onToggleFavorite })
     setNotes(location.notes || '');
   }, [location.notes]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (!isFavorited && notes.trim()) {
+      // If location is not favorited but has notes, make it a favorite
+      await onToggleFavorite();
+    }
     onSaveNotes(notes);
   };
 
   return (
     <div className="min-w-[250px] max-w-[150px] flex flex-col gap-2">
       <div className="flex flex-col items-center justify-between">
-
         <button
           className="p-2 hover:bg-accent/10 rounded-full transition-colors"
           onClick={onToggleFavorite}
@@ -47,7 +51,8 @@ const LocationPopup = ({ location, isFavorited, onSaveNotes, onToggleFavorite })
             className={`w-10 h-10 ${isFavorited ? 'fill-current text-red-500' : 'text-accent/70'}`}
           />
         </button>
-        <strong className="text-lg font-semibold break-words">{location.title || location.name}</strong>    <div className="flex justify-end mt-1">
+        <strong className="text-lg font-semibold break-words">{location.title || location.name}</strong>
+        <div className="flex justify-end mt-1">
         </div>
       </div>
 
@@ -55,14 +60,12 @@ const LocationPopup = ({ location, isFavorited, onSaveNotes, onToggleFavorite })
       <div className="flex flex-col gap-2 mt-1">
         <textarea
           className="w-full max-h-[35px] px-3 py-2 rounded-lg border border-accent/20 resize-none focus:outline-none focus:ring-1 focus:ring-accent"
-          placeholder="Add notes..."
+          placeholder="Add notes to favorite..."
           rows="3"
-          disabled={!isFavorited}
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           onBlur={handleSave}
         />
-
       </div>
     </div>
   );
@@ -87,30 +90,61 @@ export default function MapView() {
     const container = document.createElement('div');
     const root = createRoot(container);
 
-    const favorite = favorites.find(f => {
-      if (!f?.coordinates || !location.coordinates) return false;
-      const fLat = parseFloat(f.coordinates.lat);
-      const fLong = parseFloat(f.coordinates.long);
-      const locLat = parseFloat(location.coordinates.lat);
-      const locLong = parseFloat(location.coordinates.long);
-      return Math.abs(fLat - locLat) < 0.0001 && Math.abs(fLong - locLong) < 0.0001;
-    });
+    const favorite = favorites.find(f => isInFavorites(location, [f]));
 
     const handleToggleFavorite = async () => {
       if (!isFavorited) {
-        await addFavorite({
+        const newFavorite = await addFavorite({
           title: location.title || location.name,
           notes: favorite?.notes || '',
           coordinates: location.coordinates,
           address: location.address
         });
+        // Update popup content without closing it
+        if (mapInstanceRef.current) {
+          mapInstanceRef.current.eachLayer((layer) => {
+            if (layer instanceof L.Marker && layer._searchMarker) {
+              const popup = layer.getPopup();
+              const isOpen = popup.isOpen();
+              popup.setContent(createPopupContent(location, true));
+              if (isOpen) popup.setLatLng(layer.getLatLng()).update();
+            }
+          });
+        }
       } else {
         await removeFavorite(favorite._id);
+        if (mapInstanceRef.current) {
+          mapInstanceRef.current.eachLayer((layer) => {
+            if (layer instanceof L.Marker && layer._searchMarker) {
+              const popup = layer.getPopup();
+              const isOpen = popup.isOpen();
+              popup.setContent(createPopupContent(location, false));
+              if (isOpen) popup.setLatLng(layer.getLatLng()).update();
+            }
+          });
+        }
       }
     };
 
     const handleSaveNotes = async (notes) => {
-      if (favorite) {
+      if (!favorite && !isFavorited) {
+        // Create favorite first if it doesn't exist
+        const newFavorite = await addFavorite({
+          title: location.title || location.name,
+          notes: notes,
+          coordinates: location.coordinates,
+          address: location.address
+        });
+        // Update UI to show as favorited
+        if (mapInstanceRef.current) {
+          mapInstanceRef.current.eachLayer((layer) => {
+            if (layer instanceof L.Marker && layer._searchMarker) {
+              const popup = layer.getPopup();
+              popup.setContent(createPopupContent(location, true));
+            }
+          });
+        }
+      } else if (favorite) {
         await updateFavorite(favorite._id, { notes });
       }
     };
@@ -142,10 +176,7 @@ export default function MapView() {
     };
 
     mapInstanceRef.current.setView([location.coordinates.lat, location.coordinates.long], 14);
-    const existingFavorite = favorites.find(f =>
-      f.coordinates?.lat === location.coordinates.lat &&
-      f.coordinates?.long === location.coordinates.long
-    );
+    const existingFavorite = isInFavorites(location, favorites);
 
     // Clear existing search markers
     mapInstanceRef.current.eachLayer((layer) => {
@@ -173,22 +204,8 @@ export default function MapView() {
 
     setIsSearching(true);
     try {
-      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`);
-      const data = await response.json();
-      const results = data.slice(0, 3).map(item => {
-        const title = item.name || item.display_name.split(',')[0].trim();
-        const address = item.display_name
-          .split(',')
-          .map(part => part.trim())
-          .filter((part, idx) => idx === 0 ? part !== title : true)
-          .join(', ');
-        return {
-          title,
-          address,
-          coordinates: { lat: parseFloat(item.lat), long: parseFloat(item.lon) }
-        };
-      });
-      setSearchResults(results);
+      const results = await searchLocations(query);
+      setSearchResults(results.slice(0, 3)); // Keep only top 3 results for map view
     } catch (error) {
       console.error('Error searching location:', error);
       setSearchResults([]);
@@ -271,14 +288,8 @@ export default function MapView() {
         address
       };
 
-      // Check if this is a favorite
-      const favorite = favorites.find(f => {
-        if (!f?.coordinates) return false;
-        const fLat = parseFloat(f.coordinates.lat);
-        const fLong = parseFloat(f.coordinates.long);
-        return Math.abs(fLat - coords.lat) < 0.0001 &&
-          Math.abs(fLong - coords.long) < 0.0001;
-      });
+      // Check if this is a favorite using the service function
+      const favorite = favorites.find(f => isInFavorites(location, [f]));
 
       const marker = L.marker([coords.lat, coords.long])
         .bindPopup(createPopupContent(favorite || location, !!favorite), {

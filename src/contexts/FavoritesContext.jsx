@@ -110,8 +110,40 @@ export function FavoritesProvider({ children }) {
     }
   }
 
+  async function searchLocations(query) {
+    if (!query?.trim()) return [];
+    const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&addressdetails=1&limit=10&extratags=1`);
+    const data = await response.json();
+    return data.map(item => ({
+        title: item.name,
+        address: item.display_name.replace(`${item.name},`, '').trim(),
+        coordinates: {
+            lat: parseFloat(item.lat),
+            long: parseFloat(item.lon)
+        },
+        placeID: item.place_id,
+    }));
+  }
+
+  function isInFavorites(result, favoritesToCheck = favorites) {
+    return favoritesToCheck.some(fav =>
+        fav.coordinates?.lat === result.coordinates.lat &&
+        fav.coordinates?.long === result.coordinates.long
+    );
+  }
+
   return (
-    <FavoritesContext.Provider value={{ favorites, getFavorites, addFavorite, removeFavorite, updateFavorite, clearFavorites, getFavoritesUserName }}>
+    <FavoritesContext.Provider value={{ 
+      favorites, 
+      getFavorites, 
+      addFavorite, 
+      removeFavorite, 
+      updateFavorite, 
+      clearFavorites, 
+      getFavoritesUserName,
+      searchLocations,
+      isInFavorites 
+    }}>
       {children}
     </FavoritesContext.Provider>
   );

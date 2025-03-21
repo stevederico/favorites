@@ -5,6 +5,7 @@ import { useFavorites } from '../contexts/FavoritesContext';
 import { Search, User, MapPin, Clock, Heart, UserCircle } from 'lucide-react';
 import { getBackendURL, getCookie, timestampToString } from '@stevederico/skateboard-ui/Utilities';
 import { getState } from '../context';
+import { searchLocations, isInFavorites } from '../services/locationService';
 
 /**
  * HomeView Component
@@ -37,16 +38,7 @@ export default function HomeView() {
     }
     setIsSearching(true);
     try {
-      // Query OpenStreetMap's Nominatim API for location search
-      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`);
-      const data = await response.json();
-      
-      // Format results into a consistent structure
-      const results = data.map(item => ({
-        title: item.name || item.display_name.split(',')[0].trim(),
-        address: item.display_name,
-        coordinates: { lat: parseFloat(item.lat), long: parseFloat(item.lon) }
-      }));
+      const results = await searchLocations(query);
       setSearchResults(results);
     } catch (error) {
       console.error('Error searching locations:', error);
@@ -55,17 +47,9 @@ export default function HomeView() {
     }
   }, []);
 
-  /**
-   * Check if a location is already in favorites
-   * Compares coordinates for duplicate detection
-   * @param {Object} result - Location object to check
-   * @returns {boolean} - True if location is already favorited
-   */
-  const isInFavorites = useCallback((result) => {
-    return favorites.some(fav =>
-      fav.coordinates?.lat === result.coordinates.lat &&
-      fav.coordinates?.long === result.coordinates.long
-    );
+  // Using imported isInFavorites instead of local implementation
+  const checkFavorite = useCallback((result) => {
+    return isInFavorites(result, favorites);
   }, [favorites]);
 
   // Load favorites on component mount
@@ -147,13 +131,10 @@ export default function HomeView() {
                   </Link>
                   
                   {/* Conditional favorite/unfavorite button */}
-                  {isInFavorites(result) ? (
+                  {checkFavorite(result) ? (
                     <button
                       onClick={() => {
-                        const existingFav = favorites.find(fav =>
-                          fav.coordinates?.lat === result.coordinates.lat &&
-                          fav.coordinates?.long === result.coordinates.long
-                        );
+                        const existingFav = favorites.find(fav => isInFavorites(result, [fav]));
                         if (existingFav) removeFavorite(existingFav._id);
                       }}
                       className="flex items-center gap-2 px-4 py-2 rounded-full bg-red-500 hover:bg-red-600 transition-colors cursor-pointer"
