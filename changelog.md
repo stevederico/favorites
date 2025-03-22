@@ -52,6 +52,7 @@ fixed map urls /app/map/steve
 start location should be their first favorite
 0.1.5
 
+- add redirect from /sigin to where you were going
 - fix recently added
 - add placeId to all existing favs
 - edit my favorites

@@ -82,11 +82,14 @@ export default function MapView() {
     // If we have a username either from params or query, get their favorites
     if (username || qUsername) {
       getFavoritesUserName(username || qUsername);
+      console.log("GETTING FAVS FOR ", username)
     } else {
       // Otherwise get the current user's favorites
       getFavorites();
     }
   }, [username, qUsername]);
+
+
 
   function createPopupContent(location, isFavorited = false) {
     const container = document.createElement('div');

@@ -15,6 +15,7 @@ export default function ProfileView() {
     getFavoritesUserName(username)
   }, [username]);
 
+
   return (
     <div className="flex flex-col h-screen bg-background">
       <Header className="capitalize" title={`${username}'s Favorites`} buttonTitle={`Show in Map`} onButtonTitleClick={()=>{

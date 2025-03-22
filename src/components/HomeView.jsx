@@ -84,6 +84,8 @@ export default function HomeView() {
     fetchProfiles();
   }, []);
 
+
+
   /**
    * Handle search input changes
    * @param {Event} e - Input change event
