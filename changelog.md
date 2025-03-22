@@ -51,7 +51,9 @@ added metaTags
 fixed map urls /app/map/steve
 start location should be their first favorite
 0.1.5
-
+removed ObjectID
+added placeID on some favorites
+0.1.6
 
 - update for all ObjectID favorites, they need new coordinates and placeID added
 

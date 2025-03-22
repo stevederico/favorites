@@ -128,7 +128,7 @@ export function FavoritesProvider({ children }) {
   function isInFavorites(result, favoritesToCheck = favorites) {
     return favoritesToCheck.some(fav =>
         fav.coordinates?.lat === result.coordinates.lat &&
-        fav.coordinates?.long === result.coordinates.long
+        fav.coordinates?.lon === result.coordinates.lon
     );
   }
 

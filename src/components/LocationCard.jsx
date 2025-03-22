@@ -8,7 +8,7 @@ export default function LocationCard({ location, showRemove = true }) {
   const isInFavorites = () => {
     return favorites.some(fav => 
       fav.coordinates?.lat === location.coordinates?.lat && 
-      fav.coordinates?.long === location.coordinates?.long
+      fav.coordinates?.lon === location.coordinates?.lon
     );
   };
 
@@ -25,7 +25,7 @@ return (
                         onClick={() => {
                             const existingFav = favorites.find(fav => 
                                 fav.coordinates?.lat === location.coordinates?.lat && 
-                                fav.coordinates?.long === location.coordinates?.long
+                                fav.coordinates?.lon === location.coordinates?.lon
                             );
                             if (existingFav) removeFavorite(existingFav._id);
                         }}
@@ -45,7 +45,7 @@ return (
                 )
             ) : null}
             <Link 
-                to={`/app/map?lat=${location.coordinates?.lat}&lng=${location.coordinates?.long}&title=${encodeURIComponent(location.title)}&address=${encodeURIComponent(location.address)}`} 
+                to={`/app/map?lat=${location.coordinates?.lat}&lng=${location.coordinates?.lon}&title=${encodeURIComponent(location.title)}&address=${encodeURIComponent(location.address)}`} 
                 className="flex items-center gap-2 px-4 py-2 rounded-full text-white bg-blue-500 hover:bg-blue-600 transition-colors cursor-pointer"
             >
                 <MapPin size={16} />

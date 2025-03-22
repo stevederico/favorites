@@ -180,7 +180,7 @@ export default function MapView() {
       address: result.address
     };
 
-    mapInstanceRef.current.setView([location.coordinates.lat, location.coordinates.long], 14);
+    mapInstanceRef.current.setView([location.coordinates.lat, location.coordinates.lon], 14);
     const existingFavorite = isInFavorites(location, favorites);
 
     // Clear existing search markers
@@ -190,7 +190,7 @@ export default function MapView() {
       }
     });
 
-    const marker = L.marker([location.coordinates.lat, location.coordinates.long]);
+    const marker = L.marker([location.coordinates.lat, location.coordinates.lon]);
     marker._searchMarker = true;
     marker.bindPopup(createPopupContent(location, !!existingFavorite), {
       minWidth: 250,
@@ -230,7 +230,8 @@ export default function MapView() {
   function getValidLatLng(coordinates) {
     if (!coordinates) return null;
     const lat = parseFloat(coordinates.lat);
-    const lng = parseFloat(coordinates.long || coordinates.lng);
+    console.log("CORDS: ", coordinates)
+    const lng = parseFloat(coordinates.lon || coordinates.long);
     if (isNaN(lat) || isNaN(lng)) return null;
     return [lat, lng];
   }
@@ -304,7 +305,7 @@ export default function MapView() {
       const location = { title, coordinates: coords, address };
       const favorite = favorites.find(f => isInFavorites(location, [f]));
 
-      const marker = L.marker([coords.lat, coords.long])
+      const marker = L.marker([coords.lat, coords.lon])
         .bindPopup(createPopupContent(favorite || location, !!favorite), {
           minWidth: 250,
           maxWidth: 400,
