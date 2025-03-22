@@ -131,6 +131,7 @@ const App = () => {
         <Route path="/privacy" element={<TextView details={constants.privacyPolicy} />} />
         <Route path="/eula" element={<TextView details={constants.EULA} />} />
         <Route path="/subs" element={<TextView details={constants.subscriptionDetails} />} />
+        <Route path="*" element={<NotFound />} />
         
 
       </Routes>
