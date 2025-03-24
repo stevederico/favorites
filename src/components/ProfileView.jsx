@@ -35,7 +35,7 @@ export default function ProfileView() {
                   <h3 className="font-semibold text-lg mb-2">{favorite.title}</h3>
                   <p className="text-sm mb-4 opacity-70">{favorite.address}</p>
                   <Link
-                    to={`/app/map/${username}?lat=${favorite.coordinates?.lat}&lng=${favorite.coordinates?.lon}&title=${encodeURIComponent(favorite.title)}&address=${encodeURIComponent(favorite.address || '')}`}
+                    to={`/app/map/${username}?lat=${favorite.coordinates?.lat}&lon=${favorite.coordinates?.lon}&title=${encodeURIComponent(favorite.title)}&address=${encodeURIComponent(favorite.address || '')}`}
                     className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent hover:bg-accent/80 border border-accent transition-colors"
                   >
                     <MapPin size={16} />

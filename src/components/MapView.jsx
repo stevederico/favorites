@@ -85,6 +85,7 @@ export default function MapView() {
       console.log("GETTING FAVS FOR ", username)
     } else {
       // Otherwise get the current user's favorites
+      console.log("getFavorites ")
       getFavorites();
     }
   }, [username, qUsername]);
@@ -231,9 +232,9 @@ export default function MapView() {
     if (!coordinates) return null;
     const lat = parseFloat(coordinates.lat);
     console.log("CORDS: ", coordinates)
-    const lng = parseFloat(coordinates.lon || coordinates.long);
-    if (isNaN(lat) || isNaN(lng)) return null;
-    return [lat, lng];
+    const lon = parseFloat(coordinates.lon || coordinates.long);
+    if (isNaN(lat) || isNaN(lon)) return null;
+    return [lat, lon];
   }
 
   // Initialize map with base layer only
@@ -268,10 +269,10 @@ export default function MapView() {
     });
 
     // Set view based on URL params or first favorite
-    if (searchParams.get('lat') && searchParams.get('lng')) {
+    if (searchParams.get('lat') && searchParams.get('lon')) {
       const lat = parseFloat(searchParams.get('lat'));
-      const lng = parseFloat(searchParams.get('lng'));
-      mapInstanceRef.current.setView([lat, lng], 14);
+      const lon = parseFloat(searchParams.get('lon'));
+      mapInstanceRef.current.setView([lat, lon], 14);
     } else if (favorites.length > 0 && favorites[0].coordinates) {
       const coords = getValidLatLng(favorites[0].coordinates);
       if (coords) {
@@ -295,10 +296,10 @@ export default function MapView() {
     });
 
     // Handle URL parameter pin last to ensure it's on top
-    if (searchParams.get('lat') && searchParams.get('lng')) {
+    if (searchParams.get('lat') && searchParams.get('lon')) {
       const coords = {
         lat: parseFloat(searchParams.get('lat')),
-        long: parseFloat(searchParams.get('lng'))
+        lon: parseFloat(searchParams.get('lon'))
       };
       const title = searchParams.get('title') ? decodeURIComponent(searchParams.get('title')) : 'Location';
       const address = searchParams.get('address') ? decodeURIComponent(searchParams.get('address')) : '';

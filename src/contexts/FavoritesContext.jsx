@@ -10,9 +10,16 @@ export function FavoritesProvider({ children }) {
 
   async function getFavorites(userID) {
     let id = state.user._id
+    console.log("getFavorites state.user._id", id)
     if (userID){
       id = userID
+      console.log("getFavorites id override", id)
     }
+    if (typeof id == "undefined"){
+      console.log("getFavs id undefined")
+      return
+    }
+
     try {
       const response = await fetch(`${getBackendURL()}/favorites?uid=${id}`, {
         headers: {
@@ -30,7 +37,6 @@ export function FavoritesProvider({ children }) {
   }
 
   async function getFavoritesUserName(username) {
-
     try {
       const response = await fetch(`${getBackendURL()}/favorites?username=${username}`, {
         headers: {

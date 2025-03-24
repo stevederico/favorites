@@ -54,6 +54,7 @@ start location should be their first favorite
 removed ObjectID
 added placeID on some favorites
 0.1.6
+fixed long convert
 
 - update for all ObjectID favorites, they need new coordinates and placeID added
 

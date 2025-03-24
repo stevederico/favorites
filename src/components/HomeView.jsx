@@ -53,7 +53,10 @@ export default function HomeView() {
 
   // Load favorites on component mount
   useEffect(() => {
-    getFavorites(state.user._id);
+    if (state.user != null){
+      getFavorites();
+    }
+    
   }, [state.user]);
 
   // Implement search debouncing with 300ms delay
@@ -124,7 +127,7 @@ export default function HomeView() {
                 <div className="flex gap-3 items-center">
                   {/* View on Map button */}
                   <Link
-                    to={`/app/map?lat=${result.coordinates.lat}&lng=${result.coordinates.lon}&title=${encodeURIComponent(result.title)}&address=${encodeURIComponent(result.address)}`}
+                    to={`/app/map?lat=${result.coordinates.lat}&lon=${result.coordinates.lon}&title=${encodeURIComponent(result.title)}&address=${encodeURIComponent(result.address)}`}
                     className="flex items-center gap-2 px-4 py-2 rounded-full border border-blue-500 hover:bg-blue-600 transition-colors text-blue-500 cursor-pointer"
                   >
                     <MapPin size={16} />
@@ -187,7 +190,7 @@ export default function HomeView() {
               {favorites.slice(0, 3).map(favorite => (
                 <div
                   key={`recent-${favorite._id}`}
-                  onClick={() => navigate(`/app/map?lat=${favorite.coordinates?.lat}&lng=${favorite.coordinates?.lon}`)}
+                  onClick={() => navigate(`/app/map?lat=${favorite.coordinates?.lat}&lon=${favorite.coordinates?.lon}`)}
                   className="flex items-center justify-between p-3 bg-background rounded-lg hover:bg-blue-500/10 transition-colors cursor-pointer"
                 >
                   <div className="flex items-center gap-3">
