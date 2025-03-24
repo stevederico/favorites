@@ -232,7 +232,6 @@ export default function MapView() {
   function getValidLatLng(coordinates) {
     if (!coordinates) return null;
     const lat = parseFloat(coordinates.lat);
-    console.log("CORDS: ", coordinates)
     const lon = parseFloat(coordinates.lon || coordinates.long);
     if (isNaN(lat) || isNaN(lon)) return null;
     return [lat, lon];
