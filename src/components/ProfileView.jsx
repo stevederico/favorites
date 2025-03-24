@@ -129,19 +129,13 @@ export default function ProfileView() {
                       <MapPin size={16} />
                       <span>View on Map</span>
                     </Link>
-                    <button
-                      onClick={() => handleGetDetails(favorite)}
-                      disabled={loading[favorite._id]}
-                      className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full bg-accent hover:bg-accent/80 border border-accent transition-colors"
-                    >
-                      {loading[favorite._id] ? 'Loading...' : 'Get Details'}
-                    </button>
+
                   </div>
                 </div>
               ))}
               
               {/* Display favorites with placeID */}
-              {/* {favorites.filter(favorite => favorite.placeID).map(favorite => (
+              {favorites.filter(favorite => favorite.placeID).map(favorite => (
                 <div key={favorite._id} className="bg-accent rounded-xl shadow-md p-4 transition-all hover:scale-[1.02]">
                   <h3 className="font-semibold text-lg mb-2">{favorite.title}</h3>
                   <p className="text-sm mb-4 opacity-70">{favorite.address}</p>
@@ -153,7 +147,7 @@ export default function ProfileView() {
                     <span>View on Map</span>
                   </Link>
                 </div>
-              ))} */}
+              ))}
             </div>
           )}
           <div className="h-24" />

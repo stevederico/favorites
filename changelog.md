@@ -60,6 +60,7 @@ audited place ids
 updated from 123 without placeID to 88
 fixed show on map from homeVIew
 0.1.7
+removed getDetails
 
 - when you create from notes it creates two
 
