@@ -177,7 +177,7 @@ export default function MapView() {
 
     const location = {
       title: result.title,
-      coordinates: {lat: result.coordinates.lat, lon: result.coordinates.long},
+      coordinates: {lat: result.coordinates.lat, lon: result.coordinates.lon},
       address: result.address
     };
     console.log("LOCATION: ", location.coordinates)
@@ -232,7 +232,7 @@ export default function MapView() {
   function getValidLatLng(coordinates) {
     if (!coordinates) return null;
     const lat = parseFloat(coordinates.lat);
-    const lon = parseFloat(coordinates.lon || coordinates.long);
+    const lon = parseFloat(coordinates.lon);
     if (isNaN(lat) || isNaN(lon)) return null;
     return [lat, lon];
   }

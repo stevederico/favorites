@@ -56,6 +56,13 @@ added placeID on some favorites
 0.1.6
 fixed long convert
 fixed Search and click doesnt work
+audited place ids
+updated from 123 without placeID to 88
+fixed show on map from homeVIew
+0.1.7
+
+- when you create from notes it creates two
+
 
 - update for all ObjectID favorites, they need new coordinates and placeID added
 

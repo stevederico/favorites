@@ -120,14 +120,16 @@ export function FavoritesProvider({ children }) {
     if (!query?.trim()) return [];
     const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&addressdetails=1&limit=10&extratags=1`);
     const data = await response.json();
+    console.log("searchLocations data: ", data)
     return data.map(item => ({
         title: item.name,
         address: item.display_name.replace(`${item.name},`, '').trim(),
         coordinates: {
             lat: parseFloat(item.lat),
-            long: parseFloat(item.lon)
+            lon: parseFloat(item.lon)
         },
         placeID: item.place_id,
+        details: item
     }));
   }
 
