@@ -55,6 +55,7 @@ removed ObjectID
 added placeID on some favorites
 0.1.6
 fixed long convert
+fixed Search and click doesnt work
 
 - update for all ObjectID favorites, they need new coordinates and placeID added
 

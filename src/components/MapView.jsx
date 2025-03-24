@@ -177,9 +177,10 @@ export default function MapView() {
 
     const location = {
       title: result.title,
-      coordinates: result.coordinates,
+      coordinates: {lat: result.coordinates.lat, lon: result.coordinates.long},
       address: result.address
     };
+    console.log("LOCATION: ", location.coordinates)
 
     mapInstanceRef.current.setView([location.coordinates.lat, location.coordinates.lon], 14);
     const existingFavorite = isInFavorites(location, favorites);
