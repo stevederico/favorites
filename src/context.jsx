@@ -22,17 +22,25 @@ const getInitialUser = () => {
 const initialState = { user: getInitialUser() };
 
 function reducer(state, action) {
-  const storageKey = getStorageKey();
+  try {
+    const storageKey = getStorageKey();
+    const appName = constants.appName || 'favs';
+    const csrfKey = `${appName.toLowerCase().replace(/\s+/g, '-')}_csrf`;
 
-  switch (action.type) {
-    case 'SET_USER':
-      localStorage.setItem(storageKey, JSON.stringify(action.payload));
-      return { ...state, user: action.payload };
-    case 'CLEAR_USER':
-      localStorage.removeItem(storageKey);
-      return { ...state, user: null };
-    default:
-      return state;
+    switch (action.type) {
+      case 'SET_USER':
+        console.log("SET_USER: ", action.payload);
+        localStorage.setItem(storageKey, JSON.stringify(action.payload));
+        return { ...state, user: action.payload };
+      case 'CLEAR_USER':
+        localStorage.removeItem(storageKey);
+        localStorage.removeItem(csrfKey); // Clear CSRF token
+        return { ...state, user: null };
+      default:
+        return state;
+    }
+  } catch (e) {
+    return state;
   }
 }
 
