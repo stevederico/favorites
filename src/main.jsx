@@ -8,14 +8,15 @@ import {
   useNavigate,
   useLocation,
 } from 'react-router-dom';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import './assets/styles.css';
 import Layout from '@stevederico/skateboard-ui/Layout';
 import LandingView from '@stevederico/skateboard-ui/LandingView';
 import TextView from '@stevederico/skateboard-ui/TextView';
 import SignUpView from '@stevederico/skateboard-ui/SignUpView';
 import SignInView from '@stevederico/skateboard-ui/SignInView';
-import StripeView from '@stevederico/skateboard-ui/StripeView';
+import SignOutView from '@stevederico/skateboard-ui/SignOutView';
+import PaymentView from '@stevederico/skateboard-ui/PaymentView';
 import SettingsView from '@stevederico/skateboard-ui/SettingsView';
 import NotFound from '@stevederico/skateboard-ui/NotFound';
 import { getCurrentUser } from '@stevederico/skateboard-ui/Utilities';
@@ -28,37 +29,29 @@ import HomeView from './components/HomeView.jsx'
 import MapView from './components/MapView.jsx'
 import ProfileView from './components/ProfileView.jsx'
 
-const ProtectedRoute = () => {
-  const auth = isAuthenticated();
-  return auth ? <Outlet /> : <Navigate to="/signin" replace />;
-};
-
 function isAuthenticated() {
-  // Check client-side noLogin flag first
   if (constants.noLogin === true) {
     return true;
   }
-  // Otherwise check for valid auth token
-  try {
-    const token = document.cookie
-      .split('; ')
-      .find(row => row.startsWith('token='))
-      ?.split('=')[1];
-    return Boolean(token);
-  } catch (e) {
-    return false;
-  }
+  const appName = constants.appName || 'favs';
+  const csrfKey = `${appName.toLowerCase().replace(/\s+/g, '-')}_csrf`;
+  return Boolean(localStorage.getItem(csrfKey));
 }
+
+const ProtectedRoute = () => {
+  return isAuthenticated() ? <Outlet /> : <Navigate to="/signin" replace />;
+};
 
 const App = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { state, dispatch } = getState();
+  const fetchingRef = useRef(false);
 
   const getMetaData = () => {
     const path = location.pathname;
     const baseTitle = constants.appName;
-    
+
     if (path.includes('/app/map')) {
       return {
         title: `Map - ${baseTitle}`,
@@ -75,7 +68,7 @@ const App = () => {
         description: 'View user profile and their favorite places'
       };
     }
-    
+
     return {
       title: baseTitle,
       description: 'Share and discover your favorite places'
@@ -84,27 +77,37 @@ const App = () => {
 
   useEffect(() => {
     document.title = constants.appName;
-    const appStart = async () => {
-      if (!location.pathname.toLowerCase().includes('app')) {
-        return;
-      }
+    if (!location.pathname.toLowerCase().includes('app')) {
+      document.documentElement.classList.remove('dark');
+      document.body.classList.remove('dark');
+    }
+  }, [location.pathname]);
 
-      // Always try to fetch user data regardless of noLogin // The server will allow the request through if noLogin is enabled on its side
+  useEffect(() => {
+    const isAppRoute = location.pathname.toLowerCase().includes('app');
+    if (!isAppRoute || state.user || fetchingRef.current) return;
+
+    const fetchUser = async () => {
+      fetchingRef.current = true;
       try {
         const data = await getCurrentUser();
         if (data) {
           dispatch({ type: 'SET_USER', payload: data });
+        } else if (!constants.noLogin) {
+          navigate('/signin');
         }
       } catch (error) {
         console.error('Failed to fetch user:', error);
         if (!constants.noLogin) {
           navigate('/signin');
         }
+      } finally {
+        fetchingRef.current = false;
       }
     };
 
-    appStart();
-  }, [location.pathname, navigate, dispatch]);
+    fetchUser();
+  }, [location.pathname, state.user, dispatch, navigate]);
 
   const metaData = getMetaData();
 
@@ -121,12 +124,13 @@ const App = () => {
             <Route path="map" element={<MapView />} />
             <Route path="map/:username" element={<MapView />} />
             <Route path="settings" element={<SettingsView />} />
-            <Route path="stripe" element={<StripeView />} />
+            <Route path="stripe" element={<PaymentView />} />
           </Route>
         </Route>
         <Route path="/" element={<LandingView />} />
         <Route path="/signin" element={<SignInView />} />
         <Route path="/signup" element={<SignUpView />} />
+        <Route path="/signout" element={<SignOutView />} />
         <Route path="/terms" element={<TextView details={constants.termsOfService} />} />
         <Route path="/privacy" element={<TextView details={constants.privacyPolicy} />} />
         <Route path="/eula" element={<TextView details={constants.EULA} />} />
