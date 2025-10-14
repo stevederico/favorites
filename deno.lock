@@ -1,7 +1,7 @@
 {
   "version": "5",
   "specifiers": {
-    "npm:@stevederico/skateboard-ui@0.9.6": "0.9.6_react@19.2.0_react-dom@19.2.0__react@19.2.0_tailwindcss@4.1.6",
+    "npm:@stevederico/skateboard-ui@0.9.8": "0.9.8_react@19.2.0_react-dom@19.2.0__react@19.2.0_react-router-dom@7.9.4__react@19.2.0__react-dom@19.2.0___react@19.2.0_tailwindcss@4.1.6",
     "npm:@tailwindcss/vite@^4.1.6": "4.1.14_vite@6.3.7__picomatch@4.0.3",
     "npm:@vitejs/plugin-react-swc@^3.8.1": "3.11.0_vite@6.3.7__picomatch@4.0.3",
     "npm:leaflet@^1.9.4": "1.9.4",
@@ -940,8 +940,8 @@
       "os": ["win32"],
       "cpu": ["x64"]
     },
-    "@stevederico/skateboard-ui@0.9.6_react@19.2.0_react-dom@19.2.0__react@19.2.0_tailwindcss@4.1.6": {
-      "integrity": "sha512-/JHkUCnv5DuoRXD+zZrjPWV/janqGJBa1mJojvbyb6WaWTiaqQ7do2YAo9g2sEpQqgJJBuZ5GjfpYtSVRDmahA==",
+    "@stevederico/skateboard-ui@0.9.8_react@19.2.0_react-dom@19.2.0__react@19.2.0_react-router-dom@7.9.4__react@19.2.0__react-dom@19.2.0___react@19.2.0_tailwindcss@4.1.6": {
+      "integrity": "sha512-rzX0MdHMwPIloQlXVb33QFCNfNrhgybkouEL7CiciMqFeIRd8NcNYPa1qnYe4p+VCN6LP8kQXYY2YYO8rMAw+g==",
       "dependencies": [
         "@radix-ui/react-accordion",
         "@radix-ui/react-alert-dialog",
@@ -980,6 +980,7 @@
         "react-day-picker",
         "react-dom",
         "react-resizable-panels",
+        "react-router-dom",
         "sonner",
         "tailwind-merge",
         "tailwindcss-animate",
@@ -1843,7 +1844,7 @@
   "workspace": {
     "packageJson": {
       "dependencies": [
-        "npm:@stevederico/skateboard-ui@0.9.6",
+        "npm:@stevederico/skateboard-ui@0.9.8",
         "npm:@tailwindcss/vite@^4.1.6",
         "npm:@vitejs/plugin-react-swc@^3.8.1",
         "npm:leaflet@^1.9.4",
