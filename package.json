@@ -1,7 +1,7 @@
 {
   "name": "favs",
   "private": true,
-  "version": "0.1.7",
+  "version": "0.2.0",
   "type": "module",
   "scripts": {
     "serve": "vite --force --mode development",
@@ -10,7 +10,7 @@
     "prod": "vite build --mode production; cp -r ./dist/* ../bixby-proxy/public/favs.bixbyapps.com"
   },
   "dependencies": {
-    "@stevederico/skateboard-ui": "0.4.1",
+    "@stevederico/skateboard-ui": "0.9.6",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.509.0",
   "react": "^19.1.0",
