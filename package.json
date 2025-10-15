@@ -13,16 +13,16 @@
     "@stevederico/skateboard-ui": "0.9.8",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.509.0",
-  "react": "^19.1.0",
-    "react-dom": "^19.1.0",
-    "react-router-dom": "^7.6.0",
+  "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-router-dom": "^7.9.4",
     "recharts": "^2.15.3",
-    "tailwindcss-animate": "^1.0.7"
+    "tailwindcss-animate": "^1.0.7",
+    "vite": "^7.1.10"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.6",
     "@vitejs/plugin-react-swc": "^3.8.1",
-    "tailwindcss": "4.1.6",
-    "vite": "^6.2.4"
+    "tailwindcss": "4.1.6"
   }
 }
