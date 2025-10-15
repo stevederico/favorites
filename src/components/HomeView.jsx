@@ -79,9 +79,11 @@ export default function HomeView() {
           }
         })
         const data = await response.json();
-        setProfiles(data);
+        // Handle both array response and object with profiles property
+        setProfiles(Array.isArray(data) ? data : (data.profiles || []));
       } catch (error) {
         console.error('Error fetching profiles:', error);
+        setProfiles([]); // Ensure profiles remains an array on error
       }
     };
     fetchProfiles();
