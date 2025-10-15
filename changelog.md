@@ -59,14 +59,8 @@ fixed Search and click doesnt work
 audited place ids
 updated from 123 without placeID to 88
 fixed show on map from homeVIew
-0.1.7
-removed getDetails
-
 - when you create from notes it creates two
-
-
 - update for all ObjectID favorites, they need new coordinates and placeID added
-
 - add redirect from /sigin to where you were going
 - fix recently added
 - add placeId to all existing favs
@@ -74,10 +68,24 @@ removed getDetails
 - rank your favorites
 - add social feed
 - add profiles for people/celebs and fill it out for them, normand and david chang
-
-
 - better handling for user name or @handle
 - add number of favorites to /profiles?
+
+0.2.1
+
+  Migrate to Skateboard 0.9.8
+  Add tailwindcss-animate plugin
+  Remove commented CSS code
+  Fix index.html body style
+  Update fetch patterns
+  Add credentials include
+  Add CSRF token headers
+  Update vite.config.js plugins
+  Remove unused utility imports
+
+0.1.7
+
+  Remove getDetails
 
 TEMPLATE
 - git init

@@ -19,7 +19,7 @@ import PaymentView from '@stevederico/skateboard-ui/PaymentView';
 import SettingsView from '@stevederico/skateboard-ui/SettingsView';
 import NotFound from '@stevederico/skateboard-ui/NotFound';
 import ProtectedRoute from '@stevederico/skateboard-ui/ProtectedRoute';
-import { useAppSetup, isAuthenticated, getCSRFToken, getAppKey } from '@stevederico/skateboard-ui/Utilities';
+import { useAppSetup } from '@stevederico/skateboard-ui/Utilities';
 import { ContextProvider, getState } from './context.jsx';
 import { FavoritesProvider } from './contexts/FavoritesContext';
 import constants from './constants.json';

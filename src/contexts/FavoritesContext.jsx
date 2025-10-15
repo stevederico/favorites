@@ -1,5 +1,5 @@
 import { createContext, useContext, useState } from 'react';
-import { getBackendURL, getCookie } from '@stevederico/skateboard-ui/Utilities';
+import { getBackendURL, getCSRFToken } from '@stevederico/skateboard-ui/Utilities';
 import { getState } from '../context';
 
 export const FavoritesContext = createContext();
@@ -22,9 +22,9 @@ export function FavoritesProvider({ children }) {
 
     try {
       const response = await fetch(`${getBackendURL()}/favorites?uid=${id}`, {
+        credentials: 'include',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${getCookie('token')}`
+          'Content-Type': 'application/json'
         }
       });
       const data = await response.json();
@@ -39,9 +39,9 @@ export function FavoritesProvider({ children }) {
   async function getFavoritesUserName(username) {
     try {
       const response = await fetch(`${getBackendURL()}/favorites?username=${username}`, {
+        credentials: 'include',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${getCookie('token')}`
+          'Content-Type': 'application/json'
         }
       });
       const data = await response.json();
@@ -59,11 +59,13 @@ export function FavoritesProvider({ children }) {
 
   async function addFavorite(location) {
     try {
+      const csrfToken = getCSRFToken();
       const response = await fetch(`${getBackendURL()}/favorites`, {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${getCookie('token')}`
+          ...(csrfToken && { 'X-CSRF-Token': csrfToken })
         },
         body: JSON.stringify(location)
       });
@@ -78,11 +80,13 @@ export function FavoritesProvider({ children }) {
 
   async function removeFavorite(_id) {
     try {
+      const csrfToken = getCSRFToken();
       const response = await fetch(`${getBackendURL()}/favorites`, {
         method: 'DELETE',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${getCookie('token')}`
+          ...(csrfToken && { 'X-CSRF-Token': csrfToken })
         },
         body: JSON.stringify({_id})
       });
@@ -99,11 +103,13 @@ export function FavoritesProvider({ children }) {
 
   async function updateFavorite(_id, updates) {
     try {
+      const csrfToken = getCSRFToken();
       const response = await fetch(`${getBackendURL()}/favorites`, {
         method: 'PUT',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${getCookie('token')}`
+          ...(csrfToken && { 'X-CSRF-Token': csrfToken })
         },
         body: JSON.stringify({ _id, ...updates })
       });
