@@ -3,7 +3,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useFavorites } from '../contexts/FavoritesContext';
 import { Search, User, MapPin, Clock, Heart, UserCircle } from 'lucide-react';
-import { getBackendURL, getCookie, timestampToString } from '@stevederico/skateboard-ui/Utilities';
+import { getBackendURL, timestampToString } from '@stevederico/skateboard-ui/Utilities';
 import { getState } from '../context';
 
 
@@ -73,9 +73,9 @@ export default function HomeView() {
       try {
         // API call to get profiles with authentication
         const response = await fetch(`${getBackendURL()}/profiles`, {
+          credentials: 'include',
           headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${getCookie('token')}`
+            'Content-Type': 'application/json'
           }
         })
         const data = await response.json();

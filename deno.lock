@@ -10,6 +10,7 @@
     "npm:react-router-dom@^7.6.0": "7.9.4_react@19.2.0_react-dom@19.2.0__react@19.2.0",
     "npm:react@^19.1.0": "19.2.0",
     "npm:recharts@^2.15.3": "2.15.4_react@19.2.0_react-dom@19.2.0__react@19.2.0",
+    "npm:tailwindcss-animate@^1.0.7": "1.0.7_tailwindcss@4.1.6",
     "npm:tailwindcss@4.1.6": "4.1.6",
     "npm:vite@^6.2.4": "6.3.7_picomatch@4.0.3"
   },
@@ -1853,6 +1854,7 @@
         "npm:react-router-dom@^7.6.0",
         "npm:react@^19.1.0",
         "npm:recharts@^2.15.3",
+        "npm:tailwindcss-animate@^1.0.7",
         "npm:tailwindcss@4.1.6",
         "npm:vite@^6.2.4"
       ]
