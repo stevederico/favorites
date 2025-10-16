@@ -1,6 +1,6 @@
 import { createContext, useContext, useState } from 'react';
 import { getBackendURL, getCSRFToken } from '@stevederico/skateboard-ui/Utilities';
-import { getState } from '../context';
+import { getState } from '@stevederico/skateboard-ui/Context';
 
 export const FavoritesContext = createContext();
 

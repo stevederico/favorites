@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useFavorites } from '../contexts/FavoritesContext';
 import { Search, User, MapPin, Clock, Heart, UserCircle } from 'lucide-react';
 import { getBackendURL, timestampToString } from '@stevederico/skateboard-ui/Utilities';
-import { getState } from '../context';
+import { getState } from '@stevederico/skateboard-ui/Context';
 
 
 /**

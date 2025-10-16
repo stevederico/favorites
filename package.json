@@ -1,7 +1,7 @@
 {
   "name": "favs",
   "private": true,
-  "version": "0.2.1",
+  "version": "0.2.2",
   "type": "module",
   "scripts": {
     "serve": "vite --force --mode development",
@@ -10,7 +10,7 @@
     "prod": "vite build --mode production; cp -r ./dist/* ../bixby-proxy/public/favs.bixbyapps.com"
   },
   "dependencies": {
-    "@stevederico/skateboard-ui": "0.9.8",
+    "@stevederico/skateboard-ui": "^1.0.7",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.509.0",
   "react": "^19.2.0",
@@ -21,8 +21,8 @@
     "vite": "^7.1.10"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.1.6",
-    "@vitejs/plugin-react-swc": "^3.8.1",
-    "tailwindcss": "4.1.6"
+    "@tailwindcss/vite": "^4.1.14",
+    "@vitejs/plugin-react-swc": "^4.1.0",
+    "tailwindcss": "4.1.14"
   }
 }
