@@ -71,6 +71,11 @@ fixed show on map from homeVIew
 - better handling for user name or @handle
 - add number of favorites to /profiles?
 
+0.3.0
+
+  Update dependencies
+  Update vite configuration
+
 0.2.2
 
   Update skateboard-ui 1.0.7
