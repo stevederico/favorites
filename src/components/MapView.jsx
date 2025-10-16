@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useSearchParams, useParams } from 'react-router-dom';
 import { Search, MapPin, Heart } from 'lucide-react';
 import { createRoot } from 'react-dom/client';
-import { getState } from '../context';
+import { getState } from '@stevederico/skateboard-ui/Context';
 import { useFavorites } from '../contexts/FavoritesContext';
 
 import * as L from 'leaflet';
