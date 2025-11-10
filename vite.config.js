@@ -1,4 +1,4 @@
-import { getSkateboardViteConfig } from '@stevederico/skateboard-ui/Utilities';
+import { getSkateboardViteConfig } from '@stevederico/skateboard-ui/ViteConfig';
 
 const config = await getSkateboardViteConfig();
 
