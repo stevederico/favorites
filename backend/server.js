@@ -417,11 +417,11 @@ app.use('*', async (c, next) => {
 app.use('*', secureHeaders({
   contentSecurityPolicy: {
     defaultSrc: ["'self'"],
-    scriptSrc: ["'self'", "'unsafe-inline'"],
+    scriptSrc: ["'self'", "'unsafe-inline'", "https://aob.bixbyapps.com"],
     styleSrc: ["'self'", "'unsafe-inline'"],
     imgSrc: ["'self'", "https:"],
     fontSrc: ["'self'"],
-    connectSrc: ["'self'"],
+    connectSrc: ["'self'", "https://aob.bixbyapps.com"],
     frameAncestors: ["'none'"]
   },
   strictTransportSecurity: isDevelopment ? false : 'max-age=31536000; includeSubDomains; preload',

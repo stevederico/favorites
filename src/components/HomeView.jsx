@@ -5,6 +5,7 @@ import { useFavorites } from '../contexts/FavoritesContext';
 import DynamicIcon from '@stevederico/skateboard-ui/DynamicIcon';
 import { getBackendURL, timestampToString } from '@stevederico/skateboard-ui/Utilities';
 import { getState } from '@stevederico/skateboard-ui/Context';
+import { trackEvent } from '../utils/analytics';
 
 
 /**
@@ -53,6 +54,7 @@ export default function HomeView() {
 
   // Load favorites on component mount
   useEffect(() => {
+    trackEvent('home-viewed');
     if (state.user != null){
       getFavorites();
     }
@@ -168,13 +170,19 @@ export default function HomeView() {
           {/* Quick Actions Section - Map and Profile buttons */}
           <div className="grid grid-cols-2 gap-4 mb-8">
             <button className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl bg-purple-500 hover:bg-purple-600 transition-colors cursor-pointer"
-              onClick={() => navigate(`/app/map`)}
+              onClick={() => {
+                trackEvent('nav-clicked', { destination: 'map' });
+                navigate(`/app/map`);
+              }}
             >
               <DynamicIcon name="map-pin" className="font-medium text-white" size={24} />
               <span className="font-medium text-white">Show Map</span>
             </button>
             <button
-              onClick={() => navigate(`/app/${state.user?.name?.toLowerCase()}`)}
+              onClick={() => {
+                trackEvent('nav-clicked', { destination: 'my-favorites' });
+                navigate(`/app/${state.user?.name?.toLowerCase()}`);
+              }}
               className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl bg-blue-500 hover:bg-blue-600 transition-colors cursor-pointer"
             >
               <DynamicIcon name="user" className="font-medium text-white" size={24} />
@@ -216,6 +224,7 @@ export default function HomeView() {
                 <Link
                   key={profile._id}
                   to={`/app/map/${profile.name.toLowerCase()}`}
+                  onClick={() => trackEvent('profile-clicked', { profile: profile.name })}
                   className="bg-accent rounded-xl shadow-md p-6 hover:shadow-lg transition-all cursor-pointer"
                 >
                   <div className="flex items-center gap-4">

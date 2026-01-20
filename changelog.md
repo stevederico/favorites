@@ -1,5 +1,13 @@
 ## CHANGELOG
 
+0.3.2
+
+  Add Umami analytics
+  Add analytics utility
+  Track favorite events
+  Track navigation events
+  Update CSP headers
+
 0.3.1
 
   Add shared Hono backend
