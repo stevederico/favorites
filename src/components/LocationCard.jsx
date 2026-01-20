@@ -1,13 +1,13 @@
 import { Link } from 'react-router-dom';
-import { MapPin, X, Heart } from 'lucide-react';
+import DynamicIcon from '@stevederico/skateboard-ui/DynamicIcon';
 import { useFavorites } from '../contexts/FavoritesContext';
 
 export default function LocationCard({ location, showRemove = true }) {
   const { favorites, removeFavorite, addFavorite } = useFavorites();
-  
+
   const isInFavorites = () => {
-    return favorites.some(fav => 
-      fav.coordinates?.lat === location.coordinates?.lat && 
+    return favorites.some(fav =>
+      fav.coordinates?.lat === location.coordinates?.lat &&
       fav.coordinates?.lon === location.coordinates?.lon
     );
   };
@@ -23,15 +23,15 @@ return (
                 isInFavorites() ? (
                     <button
                         onClick={() => {
-                            const existingFav = favorites.find(fav => 
-                                fav.coordinates?.lat === location.coordinates?.lat && 
+                            const existingFav = favorites.find(fav =>
+                                fav.coordinates?.lat === location.coordinates?.lat &&
                                 fav.coordinates?.lon === location.coordinates?.lon
                             );
                             if (existingFav) removeFavorite(existingFav._id);
                         }}
                         className="flex items-center gap-2 px-4 py-2 rounded-full text-red-500 border border-red-500 hover:bg-red-600 transition-colors cursor-pointer"
                     >
-                        <X size={16} />
+                        <DynamicIcon name="x" size={16} />
                         <span>Remove</span>
                     </button>
                 ) : (
@@ -39,16 +39,16 @@ return (
                         onClick={() => addFavorite(location)}
                         className="flex items-center gap-2 px-4 py-2 rounded-full text-white bg-blue-500 hover:bg-blue-600 transition-colors cursor-pointer"
                     >
-                        <Heart size={16} />
+                        <DynamicIcon name="heart" size={16} />
                         <span>Favorite</span>
                     </button>
                 )
             ) : null}
-            <Link 
-                to={`/app/map?lat=${location.coordinates?.lat}&lon=${location.coordinates?.lon}&title=${encodeURIComponent(location.title)}&address=${encodeURIComponent(location.address)}`} 
+            <Link
+                to={`/app/map?lat=${location.coordinates?.lat}&lon=${location.coordinates?.lon}&title=${encodeURIComponent(location.title)}&address=${encodeURIComponent(location.address)}`}
                 className="flex items-center gap-2 px-4 py-2 rounded-full text-white bg-blue-500 hover:bg-blue-600 transition-colors cursor-pointer"
             >
-                <MapPin size={16} />
+                <DynamicIcon name="map-pin" size={16} />
                 <span>View Map</span>
             </Link>
         </div>

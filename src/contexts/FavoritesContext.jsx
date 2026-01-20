@@ -147,16 +147,16 @@ export function FavoritesProvider({ children }) {
   }
 
   return (
-    <FavoritesContext.Provider value={{ 
-      favorites, 
-      getFavorites, 
-      addFavorite, 
-      removeFavorite, 
-      updateFavorite, 
-      clearFavorites, 
+    <FavoritesContext.Provider value={{
+      favorites,
+      getFavorites,
+      addFavorite,
+      removeFavorite,
+      updateFavorite,
+      clearFavorites,
       getFavoritesUserName,
       searchLocations,
-      isInFavorites 
+      isInFavorites
     }}>
       {children}
     </FavoritesContext.Provider>

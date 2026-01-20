@@ -1,5 +1,6 @@
-@import "tailwindcss";
 @import "@stevederico/skateboard-ui/styles.css";
+
+@source '../../node_modules/@stevederico/skateboard-ui';
 
 @theme {
   --color-app: var(--color-red-500);
