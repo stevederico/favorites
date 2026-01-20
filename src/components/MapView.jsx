@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useSearchParams, useParams } from 'react-router-dom';
-import { Search, MapPin, Heart } from 'lucide-react';
+import DynamicIcon from '@stevederico/skateboard-ui/DynamicIcon';
 import { createRoot } from 'react-dom/client';
 import { getState } from '@stevederico/skateboard-ui/Context';
 import { useFavorites } from '../contexts/FavoritesContext';
@@ -42,9 +42,16 @@ const LocationPopup = ({ location, isFavorited, onSaveNotes, onToggleFavorite })
           onClick={onToggleFavorite}
           aria-label={isFavorited ? 'Remove from favorites' : 'Add to favorites'}
         >
-          <Heart
+          <svg
             className={`w-10 h-10 ${isFavorited ? 'fill-current text-red-500' : 'text-accent/70'}`}
-          />
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill={isFavorited ? 'currentColor' : 'none'}
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+          </svg>
         </button>
         <strong className="text-lg font-semibold break-words">{location.title || location.name}</strong>
         <div className="flex justify-end mt-1">
@@ -328,7 +335,7 @@ export default function MapView() {
             placeholder="Search places..."
             className="w-full pl-4 pr-12 py-3 rounded-xl bg-accent shadow-lg border border-gray-300 focus:outline-none focus:ring-2"
           />
-          <Search className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+          <DynamicIcon name="search" className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
 
           {/* Search Results Dropdown */}
           {(searchResults.length > 0 || isSearching) && searchQuery && (
@@ -342,7 +349,7 @@ export default function MapView() {
                     onClick={() => handleResultClick(result)}
                     className="w-full p-3 flex items-center gap-3 hover:bg-background transition-colors border-b last:border-b-0 border-gray-300"
                   >
-                    <MapPin size={16} className="flex-shrink-0" />
+                    <DynamicIcon name="map-pin" size={16} className="flex-shrink-0" />
                     <div className="text-left overflow-hidden">
                       <div className="font-medium truncate">{result.title}</div>
                       <div className="text-sm opacity-70 truncate">{result.address}</div>

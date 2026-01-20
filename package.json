@@ -1,28 +1,32 @@
 {
-  "name": "favs",
-  "private": true,
-  "version": "0.3.0",
+  "name": "BXFav-WIP",
+  "private": false,
+  "version": "0.3.1",
+  "skateboardVersion": "1.2.1",
   "type": "module",
+  "workspaces": [
+    "backend"
+  ],
   "scripts": {
-    "serve": "vite --force --mode development",
-    "start": "vite --force --mode development",
-    "build": "vite build --mode development;",
-    "prod": "vite build --mode production; cp -r ./dist/* ../bixby-proxy/public/favs.bixbyapps.com"
+    "start": "npm run front & npm run server",
+    "front": "vite --force --mode development",
+    "server": "npm run --workspace=backend start",
+    "build": "vite build --mode production",
+    "prod": "vite build --mode production",
+    "install-all": "npm install && npm install --workspace=backend"
   },
   "dependencies": {
-    "@stevederico/skateboard-ui": "1.2.0",
+    "@stevederico/skateboard-ui": "1.2.18",
     "leaflet": "^1.9.4",
-    "lucide-react": "^0.509.0",
-  "react": "^19.2.0",
+    "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.9.4",
-    "recharts": "^2.15.3",
-    "tailwindcss-animate": "^1.0.7",
-    "vite": "^7.1.10"
+    "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.14",
     "@vitejs/plugin-react-swc": "^4.1.0",
-    "tailwindcss": "4.1.14"
+    "tailwindcss": "^4.1.14",
+    "vite": "^7.1.10"
   }
 }

@@ -2,7 +2,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useFavorites } from '../contexts/FavoritesContext';
-import { Search, User, MapPin, Clock, Heart, UserCircle } from 'lucide-react';
+import DynamicIcon from '@stevederico/skateboard-ui/DynamicIcon';
 import { getBackendURL, timestampToString } from '@stevederico/skateboard-ui/Utilities';
 import { getState } from '@stevederico/skateboard-ui/Context';
 
@@ -14,14 +14,14 @@ import { getState } from '@stevederico/skateboard-ui/Context';
  */
 export default function HomeView() {
   const { favorites, getFavorites, removeFavorite, addFavorite, searchLocations, isInFavorites } = useFavorites();
-  
+
   // Local state management
   const [searchQuery, setSearchQuery] = useState(''); // Current search input
   const [searchResults, setSearchResults] = useState([]); // Search result locations
   const [isSearching, setIsSearching] = useState(false); // Loading state for search
   const [profiles, setProfiles] = useState([]); // List of all user profiles
   const { state } = getState();
-  
+
   // Navigation and routing
   const navigate = useNavigate();
 
@@ -56,7 +56,7 @@ export default function HomeView() {
     if (state.user != null){
       getFavorites();
     }
-    
+
   }, [state.user]);
 
   // Implement search debouncing with 300ms delay
@@ -110,7 +110,7 @@ export default function HomeView() {
           placeholder="Search places..."
           className="w-full pl-4 pr-12 py-3 rounded-xl bg-accent shadow-lg border border-gray-300 focus:outline-none focus:ring-2"
         />
-        <Search className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+        <DynamicIcon name="search" className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
       </div>
 
       {searchQuery ? (
@@ -132,10 +132,10 @@ export default function HomeView() {
                     to={`/app/map?lat=${result.coordinates.lat}&lon=${result.coordinates.lon}&title=${encodeURIComponent(result.title)}&address=${encodeURIComponent(result.address)}`}
                     className="flex items-center gap-2 px-4 py-2 rounded-full border border-blue-500 hover:bg-blue-600 transition-colors text-blue-500 cursor-pointer"
                   >
-                    <MapPin size={16} />
+                    <DynamicIcon name="map-pin" size={16} />
                     <span>View on Map</span>
                   </Link>
-                  
+
                   {/* Conditional favorite/unfavorite button */}
                   {checkFavorite(result) ? (
                     <button
@@ -145,7 +145,7 @@ export default function HomeView() {
                       }}
                       className="flex items-center gap-2 px-4 py-2 rounded-full bg-red-500 hover:bg-red-600 transition-colors cursor-pointer"
                     >
-                      <Heart size={16} />
+                      <DynamicIcon name="heart" size={16} />
                       <span>Remove from Favorites</span>
                     </button>
                   ) : (
@@ -153,7 +153,7 @@ export default function HomeView() {
                       onClick={() => addFavorite(result)}
                       className="flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500 hover:bg-blue-600 transition-colors cursor-pointer"
                     >
-                      <Heart size={16} />
+                      <DynamicIcon name="heart" size={16} />
                       <span>Add to Favorites</span>
                     </button>
                   )}
@@ -170,22 +170,22 @@ export default function HomeView() {
             <button className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl bg-purple-500 hover:bg-purple-600 transition-colors cursor-pointer"
               onClick={() => navigate(`/app/map`)}
             >
-              <MapPin className="font-medium text-white" size={24} />
+              <DynamicIcon name="map-pin" className="font-medium text-white" size={24} />
               <span className="font-medium text-white">Show Map</span>
             </button>
             <button
               onClick={() => navigate(`/app/${state.user?.name?.toLowerCase()}`)}
               className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl bg-blue-500 hover:bg-blue-600 transition-colors cursor-pointer"
             >
-              <User className="font-medium text-white" size={24} />
+              <DynamicIcon name="user" className="font-medium text-white" size={24} />
               <span className="font-medium text-white">My Favorites</span>
             </button>
           </div>
-          
+
           {/* Recent Activity Section - Shows latest favorites */}
           <div className="mb-8">
             <div className="flex items-center gap-2 mb-4">
-              <Clock size={24} className="text-orange-500" />
+              <DynamicIcon name="clock" size={24} className="text-orange-500" />
               <h2 className="text-xl font-bold">Recently Added</h2>
             </div>
             <div className="bg-accent rounded-xl p-4 space-y-4">
@@ -196,7 +196,7 @@ export default function HomeView() {
                   className="flex items-center justify-between p-3 bg-background rounded-lg hover:bg-blue-500/10 transition-colors cursor-pointer"
                 >
                   <div className="flex items-center gap-3">
-                    <Heart size={20} className="text-red-500" />
+                    <DynamicIcon name="heart" size={20} className="text-red-500" />
                     <span>{favorite.title}</span>
                   </div>
                   <span className="text-sm opacity-70">{timestampToString(favorite.created_at, 'ago')}</span>
@@ -204,11 +204,11 @@ export default function HomeView() {
               ))}
             </div>
           </div>
-          
+
           {/* Profiles Grid Section - Shows available user profiles */}
           <div className="mb-8">
             <div className="flex items-center gap-3 mb-6">
-              <UserCircle size={24} className="text-blue-500" />
+              <DynamicIcon name="circle-user" size={24} className="text-blue-500" />
               <h2 className="text-xl font-bold">Profiles</h2>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -219,7 +219,7 @@ export default function HomeView() {
                   className="bg-accent rounded-xl shadow-md p-6 hover:shadow-lg transition-all cursor-pointer"
                 >
                   <div className="flex items-center gap-4">
-                    <UserCircle size={40} className="text-blue-500" />
+                    <DynamicIcon name="circle-user" size={40} className="text-blue-500" />
                     <div>
                       <h3 className="font-semibold text-lg capitalize">{profile.name}</h3>
                     </div>
