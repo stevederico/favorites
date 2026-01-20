@@ -1,6 +1,7 @@
 import { createContext, useContext, useState } from 'react';
 import { getBackendURL, getCSRFToken } from '@stevederico/skateboard-ui/Utilities';
 import { getState } from '@stevederico/skateboard-ui/Context';
+import { trackEvent } from '../utils/analytics';
 
 export const FavoritesContext = createContext();
 
@@ -71,9 +72,11 @@ export function FavoritesProvider({ children }) {
       });
       const newFavorite = await response.json();
       setFavorites([...favorites, newFavorite]);
+      trackEvent('favorite-added', { title: location.title });
       return newFavorite;
     } catch (error) {
       console.error('Error adding favorite:', error);
+      trackEvent('favorite-add-failed', { error: error.message });
       return null;
     }
   }
@@ -92,11 +95,13 @@ export function FavoritesProvider({ children }) {
       });
       if (response.ok) {
         setFavorites(favorites.filter(f => f._id !== _id));
+        trackEvent('favorite-removed');
         return true;
       }
       return false;
     } catch (error) {
       console.error('Error removing favorite:', error);
+      trackEvent('favorite-remove-failed', { error: error.message });
       return false;
     }
   }
@@ -115,9 +120,11 @@ export function FavoritesProvider({ children }) {
       });
       const updatedFavorite = await response.json();
       setFavorites(favorites.map(f => f._id === _id ? updatedFavorite : f));
+      trackEvent('favorite-updated', { hasNotes: !!updates.notes });
       return updatedFavorite;
     } catch (error) {
       console.error('Error updating favorite:', error);
+      trackEvent('favorite-update-failed', { error: error.message });
       return null;
     }
   }
@@ -126,7 +133,7 @@ export function FavoritesProvider({ children }) {
     if (!query?.trim()) return [];
     const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&addressdetails=1&limit=10&extratags=1`);
     const data = await response.json();
-    console.log("searchLocations data: ", data)
+    trackEvent('location-searched', { resultsCount: data.length });
     return data.map(item => ({
         title: item.name,
         address: item.display_name.replace(`${item.name},`, '').trim(),

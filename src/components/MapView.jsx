@@ -4,6 +4,7 @@ import DynamicIcon from '@stevederico/skateboard-ui/DynamicIcon';
 import { createRoot } from 'react-dom/client';
 import { getState } from '@stevederico/skateboard-ui/Context';
 import { useFavorites } from '../contexts/FavoritesContext';
+import { trackEvent } from '../utils/analytics';
 
 import * as L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -86,13 +87,12 @@ export default function MapView() {
   const { username } = useParams();
 
   useEffect(() => {
+    trackEvent('map-viewed', { viewingUser: username || qUsername || 'self' });
     // If we have a username either from params or query, get their favorites
     if (username || qUsername) {
       getFavoritesUserName(username || qUsername);
-      console.log("GETTING FAVS FOR ", username)
     } else {
       // Otherwise get the current user's favorites
-      console.log("getFavorites ")
       getFavorites();
     }
   }, [username, qUsername]);
@@ -181,13 +181,13 @@ export default function MapView() {
   const handleResultClick = (result) => {
     setSearchQuery('');
     setSearchResults([]);
+    trackEvent('search-result-clicked', { title: result.title });
 
     const location = {
       title: result.title,
       coordinates: {lat: result.coordinates.lat, lon: result.coordinates.lon},
       address: result.address
     };
-    console.log("LOCATION: ", location.coordinates)
 
     mapInstanceRef.current.setView([location.coordinates.lat, location.coordinates.lon], 14);
     const existingFavorite = isInFavorites(location, favorites);
