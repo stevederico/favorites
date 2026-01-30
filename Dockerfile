@@ -7,7 +7,7 @@ WORKDIR /app
 COPY package*.json ./
 COPY backend/package*.json ./backend/
 
-RUN npm ci && cd backend && npm install
+RUN npm install && cd backend && npm install
 
 COPY . .
 
