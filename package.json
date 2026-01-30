@@ -1,7 +1,7 @@
 {
   "name": "BXFav-WIP",
   "private": false,
-  "version": "0.3.2",
+  "version": "0.3.3",
   "skateboardVersion": "1.2.1",
   "type": "module",
   "workspaces": [
