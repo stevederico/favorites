@@ -1,9 +1,19 @@
 {
+    "version": "0.4.0",
+    "design": {
+        "baseColor": "neutral",
+        "radius": "medium",
+        "font": "geist",
+        "iconLibrary": "lucide"
+    },
     "appName": "Favs",
     "appIcon": "heart",
     "tagline": "Share Your Favorites",
     "cta": "Get Started",
+    "ctaHeading": "Ready to Get Started?",
     "noLogin": false,
+    "authOverlay": true,
+    "sidebarCollapsed": false,
     "features": {
         "title": "Discover & Share",
         "items": [
@@ -51,6 +61,20 @@
             "Cancel Anytime"
         ]
     }],
+    "pricing": {
+        "title": "Simple, Transparent Pricing",
+        "extras": ["Priority Customer Support", "Cancel Anytime"]
+    },
+    "navLinks": [
+        { "label": "Features", "href": "#features" },
+        { "label": "Pricing", "href": "#pricing" }
+    ],
+    "footerLinks": [
+        { "label": "Privacy", "href": "/privacy" },
+        { "label": "Terms", "href": "/terms" },
+        { "label": "EULA", "href": "/eula" }
+    ],
+    "copyrightText": "All rights reserved.",
     "companyName": "Bixby Apps, LLC",
     "companyWebsite": "www.bixbyapps.com",
     "companyEmail": "support@bixbyapps.com",

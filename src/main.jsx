@@ -18,15 +18,11 @@
  */
 import './assets/styles.css';
 import { createSkateboardApp } from '@stevederico/skateboard-ui/App';
-import { initializeUtilities } from '@stevederico/skateboard-ui/Utilities';
 import { FavoritesProvider } from './contexts/FavoritesContext';
 import constants from './constants.json';
 import HomeView from './components/HomeView.jsx';
 import MapView from './components/MapView.jsx';
 import ProfileView from './components/ProfileView.jsx';
-
-// Initialize utilities before creating app
-initializeUtilities(constants);
 
 /**
  * Application route configuration

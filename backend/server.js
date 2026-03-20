@@ -19,9 +19,50 @@ import { promisify } from 'node:util';
 // ==== SERVER CONFIG ====
 const port = parseInt(process.env.PORT || "8000");
 
-// ==== RATE LIMITING ====
-const rateLimitStore = new Map();
-const RATE_LIMIT_MAX_ENTRIES = 10000; // LRU eviction threshold
+// ==== STRUCTURED LOGGING ====
+// Defined early so all code can use it (no external dependencies)
+const logger = {
+  error: (message, meta = {}) => {
+    const logEntry = {
+      level: 'ERROR',
+      timestamp: new Date().toISOString(),
+      message,
+      ...meta
+    };
+    console.error(!isProd() ? JSON.stringify(logEntry, null, 2) : JSON.stringify(logEntry));
+  },
+
+  warn: (message, meta = {}) => {
+    const logEntry = {
+      level: 'WARN',
+      timestamp: new Date().toISOString(),
+      message,
+      ...meta
+    };
+    console.warn(!isProd() ? JSON.stringify(logEntry, null, 2) : JSON.stringify(logEntry));
+  },
+
+  info: (message, meta = {}) => {
+    const logEntry = {
+      level: 'INFO',
+      timestamp: new Date().toISOString(),
+      message,
+      ...meta
+    };
+    console.log(!isProd() ? JSON.stringify(logEntry, null, 2) : JSON.stringify(logEntry));
+  },
+
+  debug: (message, meta = {}) => {
+    if (isProd()) return;
+    const logEntry = {
+      level: 'DEBUG',
+      timestamp: new Date().toISOString(),
+      message,
+      ...meta
+    };
+    console.log(JSON.stringify(logEntry, null, 2));
+  }
+};
 
 // ==== CSRF PROTECTION ====
 const csrfTokenStore = new Map(); // userID -> { token, timestamp }
@@ -71,6 +112,7 @@ function generateCSRFToken() {
  * Validates CSRF token from x-csrf-token header against stored token for userID.
  * Skips validation for GET requests and signup/signin routes. Uses timing-safe
  * comparison to prevent timing attacks. Enforces 24-hour token expiry.
+ * Auto-regenerates token if missing (e.g., server restart) for authenticated users.
  *
  * @async
  * @param {Context} c - Hono context
@@ -86,100 +128,59 @@ async function csrfProtection(c, next) {
   const userID = c.get('userID'); // Set by authMiddleware
 
   if (!csrfToken || !userID) {
+    logger.info('CSRF validation failed - missing token or userID', {
+      hasToken: !!csrfToken,
+      hasUserID: !!userID,
+      path: c.req.path
+    });
     return c.json({ error: 'Invalid CSRF token' }, 403);
   }
 
-  const storedData = csrfTokenStore.get(userID);
+  let storedData = csrfTokenStore.get(userID);
   if (!storedData) {
-    return c.json({ error: 'Invalid CSRF token' }, 403);
+    // Auto-regenerate token for authenticated users (e.g., after server restart)
+    // Security: This block only runs if authMiddleware passed (JWT valid)
+    const newToken = generateCSRFToken();
+    storedData = { token: newToken, timestamp: Date.now() };
+    csrfTokenStore.set(userID, storedData);
+
+    setCookie(c, 'csrf_token', newToken, {
+      httpOnly: false,
+      secure: isProd(),
+      sameSite: 'Lax',
+      path: '/',
+      maxAge: CSRF_TOKEN_EXPIRY / 1000
+    });
+
+    logger.info('CSRF token auto-regenerated after store miss', { userID });
+    await next();
+    return;
   }
 
   // Use timing-safe comparison to prevent timing attacks
   const tokenBuffer = Buffer.from(csrfToken);
   const storedBuffer = Buffer.from(storedData.token);
   if (tokenBuffer.length !== storedBuffer.length || !crypto.timingSafeEqual(tokenBuffer, storedBuffer)) {
+    logger.info('CSRF validation failed - token mismatch', {
+      userID,
+      path: c.req.path
+    });
     return c.json({ error: 'Invalid CSRF token' }, 403);
   }
 
   // Check if token is expired
   if (Date.now() - storedData.timestamp > CSRF_TOKEN_EXPIRY) {
     csrfTokenStore.delete(userID);
+    logger.info('CSRF validation failed - token expired', {
+      userID,
+      age: Math.floor((Date.now() - storedData.timestamp) / 1000) + 's'
+    });
     return c.json({ error: 'CSRF token expired' }, 403);
   }
 
+  logger.debug('CSRF validation passed', { userID });
   await next();
 }
-
-/**
- * Rate limiter middleware factory with sliding window algorithm
- *
- * Tracks requests per IP within time window using in-memory Map. Uses
- * X-Forwarded-For header when behind proxy. Returns 429 with retryAfter
- * when limit exceeded. Automatic cleanup via setInterval.
- *
- * @param {number} maxRequests - Maximum requests allowed in window
- * @param {number} windowMs - Time window in milliseconds
- * @param {string} [routeName='unknown'] - Route name for logging
- * @returns {Function} Hono middleware function
- */
-const rateLimiter = (maxRequests, windowMs, routeName = 'unknown') => {
-  return async (c, next) => {
-    // Use X-Forwarded-For when behind proxy, fallback to remote address
-    const key = c.req.header('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
-    const now = Date.now();
-    const windowStart = now - windowMs;
-
-    if (!rateLimitStore.has(key)) {
-      rateLimitStore.set(key, []);
-    }
-
-    const requests = rateLimitStore.get(key);
-    // Remove old requests outside the window
-    const validRequests = requests.filter(time => time > windowStart);
-
-    if (validRequests.length >= maxRequests) {
-      logger.warn('Rate limit exceeded', { route: routeName, requests: validRequests.length, limit: maxRequests });
-      return c.json({
-        error: 'Too many requests, please try again later.',
-        retryAfter: Math.ceil((windowStart + windowMs - now) / 1000)
-      }, 429);
-    }
-
-    validRequests.push(now);
-    rateLimitStore.set(key, validRequests);
-    await next();
-  };
-};
-
-// Define limiters
-const authLimiter = rateLimiter(10, 15 * 60 * 1000, 'auth routes'); // 10 requests per 15 minutes
-const userLimiter = rateLimiter(120, 15 * 60 * 1000, 'user routes'); // 120 requests per 15 minutes
-const globalLimiter = rateLimiter(300, 15 * 60 * 1000, 'global'); // 300 requests per 15 minutes
-const paymentLimiter = rateLimiter(5, 15 * 60 * 1000, 'payment routes'); // 5 requests per 15 minutes
-
-// Cleanup old rate limit entries every hour to prevent memory leak
-setInterval(() => {
-  const now = Date.now();
-  const maxWindow = 15 * 60 * 1000; // 15 minutes (largest window)
-  let cleaned = 0;
-
-  for (const [ip, requests] of rateLimitStore.entries()) {
-    const validRequests = requests.filter(time => time > now - maxWindow);
-    if (validRequests.length === 0) {
-      rateLimitStore.delete(ip);
-      cleaned++;
-    } else {
-      rateLimitStore.set(ip, validRequests);
-    }
-  }
-
-  // LRU eviction if still over limit
-  evictOldestEntries(rateLimitStore, RATE_LIMIT_MAX_ENTRIES, (requests) => Math.max(...requests));
-
-  if (cleaned > 0) {
-    console.log(`[${new Date().toISOString()}] Rate limit cleanup: removed ${cleaned} inactive IPs`);
-  }
-}, 60 * 60 * 1000); // Run every hour
 
 // Cleanup expired CSRF tokens every hour to prevent memory leak
 setInterval(() => {
@@ -197,9 +198,207 @@ setInterval(() => {
   evictOldestEntries(csrfTokenStore, CSRF_MAX_ENTRIES, (data) => data.timestamp);
 
   if (cleaned > 0) {
-    console.log(`[${new Date().toISOString()}] CSRF cleanup: removed ${cleaned} expired tokens`);
+    logger.debug('CSRF cleanup completed', { removedTokens: cleaned });
   }
 }, 60 * 60 * 1000); // Run every hour
+
+// ==== RATE LIMITING ====
+const rateLimitStore = new Map(); // key -> { count, resetAt }
+const RATE_LIMIT_WINDOW = 15 * 60 * 1000; // 15 minutes
+const RATE_LIMIT_MAX_ENTRIES = 100000; // LRU eviction threshold
+
+// Route-specific rate limits
+const RATE_LIMITS = {
+  auth: { limit: 10, window: RATE_LIMIT_WINDOW },       // /api/signin, /api/signup
+  payment: { limit: 5, window: RATE_LIMIT_WINDOW },     // /api/checkout, /api/portal
+  global: { limit: 300, window: RATE_LIMIT_WINDOW }     // all other /api routes
+};
+
+/**
+ * Get client IP address from request
+ *
+ * Checks X-Forwarded-For header first (for proxies), falls back to
+ * socket address. Handles comma-separated forwarded IPs.
+ *
+ * @param {Context} c - Hono context
+ * @returns {string} Client IP address
+ */
+function getClientIP(c) {
+  const forwarded = c.req.header('x-forwarded-for');
+  if (forwarded) {
+    return forwarded.split(',')[0].trim();
+  }
+  return c.req.raw?.socket?.remoteAddress || 'unknown';
+}
+
+/**
+ * Get rate limit category for a given path
+ *
+ * @param {string} path - Request path
+ * @returns {string} Rate limit category: 'auth', 'payment', or 'global'
+ */
+function getRateLimitCategory(path) {
+  if (path === '/api/signin' || path === '/api/signup') {
+    return 'auth';
+  }
+  if (path === '/api/checkout' || path === '/api/portal') {
+    return 'payment';
+  }
+  return 'global';
+}
+
+/**
+ * Rate limiting middleware
+ *
+ * Tracks requests per IP+category with sliding window. Returns 429 when
+ * limit exceeded. Adds X-RateLimit-Remaining and Retry-After headers.
+ *
+ * @async
+ * @param {Context} c - Hono context
+ * @param {Function} next - Next middleware function
+ * @returns {Promise<Response|void>} 429 error or continues to next middleware
+ */
+async function rateLimitMiddleware(c, next) {
+  // Skip rate limiting for health check and static files
+  if (c.req.path === '/api/health' || !c.req.path.startsWith('/api/')) {
+    return next();
+  }
+
+  const ip = getClientIP(c);
+  const category = getRateLimitCategory(c.req.path);
+  const { limit, window } = RATE_LIMITS[category];
+  const key = `${ip}:${category}`;
+  const now = Date.now();
+
+  let record = rateLimitStore.get(key);
+
+  // Reset if window expired
+  if (!record || now > record.resetAt) {
+    record = { count: 0, resetAt: now + window };
+    rateLimitStore.set(key, record);
+  }
+
+  record.count++;
+
+  // Check if over limit
+  if (record.count > limit) {
+    const retryAfter = Math.ceil((record.resetAt - now) / 1000);
+    c.header('Retry-After', String(retryAfter));
+    c.header('X-RateLimit-Remaining', '0');
+    logger.info('Rate limit exceeded', { ip, category, path: c.req.path });
+    return c.json({ error: 'Too many requests' }, 429);
+  }
+
+  c.header('X-RateLimit-Remaining', String(limit - record.count));
+  await next();
+}
+
+// Cleanup expired rate limit entries every 15 minutes
+setInterval(() => {
+  const now = Date.now();
+  let cleaned = 0;
+
+  for (const [key, record] of rateLimitStore.entries()) {
+    if (now > record.resetAt) {
+      rateLimitStore.delete(key);
+      cleaned++;
+    }
+  }
+
+  // LRU eviction if still over limit
+  evictOldestEntries(rateLimitStore, RATE_LIMIT_MAX_ENTRIES, (data) => data.resetAt);
+
+  if (cleaned > 0) {
+    logger.debug('Rate limit cleanup completed', { removedEntries: cleaned });
+  }
+}, 15 * 60 * 1000);
+
+// ==== ACCOUNT LOCKOUT ====
+const loginAttemptStore = new Map(); // email -> { attempts, lockedUntil }
+const LOCKOUT_THRESHOLD = 5; // Lock after 5 failed attempts
+const LOCKOUT_DURATION = 15 * 60 * 1000; // 15 minutes
+const LOCKOUT_MAX_ENTRIES = 50000; // LRU eviction threshold
+
+/**
+ * Check if account is locked due to failed login attempts
+ *
+ * @param {string} email - Email address to check
+ * @returns {{locked: boolean, remainingTime: number}} Lock status and remaining time in seconds
+ */
+function isAccountLocked(email) {
+  const record = loginAttemptStore.get(email);
+  if (!record) return { locked: false, remainingTime: 0 };
+
+  const now = Date.now();
+  if (record.lockedUntil && now < record.lockedUntil) {
+    return {
+      locked: true,
+      remainingTime: Math.ceil((record.lockedUntil - now) / 1000)
+    };
+  }
+
+  // Lock expired, clear record
+  if (record.lockedUntil && now >= record.lockedUntil) {
+    loginAttemptStore.delete(email);
+  }
+
+  return { locked: false, remainingTime: 0 };
+}
+
+/**
+ * Record a failed login attempt for an email
+ *
+ * Increments attempt counter. Locks account after LOCKOUT_THRESHOLD failures.
+ *
+ * @param {string} email - Email address that failed login
+ * @returns {void}
+ */
+function recordFailedLogin(email) {
+  const now = Date.now();
+  let record = loginAttemptStore.get(email);
+
+  if (!record) {
+    record = { attempts: 0, lockedUntil: null };
+    loginAttemptStore.set(email, record);
+  }
+
+  record.attempts++;
+
+  if (record.attempts >= LOCKOUT_THRESHOLD) {
+    record.lockedUntil = now + LOCKOUT_DURATION;
+    logger.info('Account locked due to failed attempts', { email: email.substring(0, 3) + '***' });
+  }
+}
+
+/**
+ * Clear failed login attempts on successful login
+ *
+ * @param {string} email - Email address to clear
+ * @returns {void}
+ */
+function clearFailedLogins(email) {
+  loginAttemptStore.delete(email);
+}
+
+// Cleanup expired lockout entries every 15 minutes
+setInterval(() => {
+  const now = Date.now();
+  let cleaned = 0;
+
+  for (const [email, record] of loginAttemptStore.entries()) {
+    if (record.lockedUntil && now >= record.lockedUntil) {
+      loginAttemptStore.delete(email);
+      cleaned++;
+    }
+  }
+
+  // LRU eviction if still over limit
+  evictOldestEntries(loginAttemptStore, LOCKOUT_MAX_ENTRIES, (data) => data.lockedUntil || 0);
+
+  if (cleaned > 0) {
+    logger.debug('Lockout cleanup completed', { removedEntries: cleaned });
+  }
+}, 15 * 60 * 1000);
 
 // ==== CONFIG & ENV ====
 // Environment setup - MUST happen before config loading
@@ -207,7 +406,7 @@ if (!isProd()) {
   loadLocalENV();
 } else {
   setInterval(async () => {
-    console.log(`Hourly Completed at ${new Date().toLocaleTimeString()}`);
+    logger.debug('Hourly task completed');
   }, 60 * 60 * 1000); // Every hour
 }
 
@@ -226,7 +425,7 @@ function resolveEnvironmentVariables(str) {
   return str.replace(/\$\{([^}]+)\}/g, (match, varName) => {
     const envValue = process.env[varName];
     if (envValue === undefined) {
-      console.warn(`Environment variable ${varName} is not defined, using placeholder: ${match}`);
+      logger.warn('Environment variable not defined, using placeholder', { varName, placeholder: match });
       return match; // Return the placeholder if env var is not found
     }
     return envValue;
@@ -251,7 +450,7 @@ try {
     }
   };
 } catch (err) {
-  console.error('Failed to load config:', err);
+  logger.error('Failed to load config, using defaults', { error: err.message });
   config = {
     staticDir: '../dist',
     database: {
@@ -265,7 +464,15 @@ try {
 const STRIPE_KEY = process.env.STRIPE_KEY;
 const JWT_SECRET = process.env.JWT_SECRET;
 
-// Validate required environment variables
+/**
+ * Validate required environment variables are set
+ *
+ * Checks for STRIPE_KEY, STRIPE_ENDPOINT_SECRET, JWT_SECRET, and any
+ * unresolved ${VAR} references in database config. Logs warnings for
+ * missing variables but does not exit the process.
+ *
+ * @returns {boolean} True if all required variables are present
+ */
 function validateEnvironmentVariables() {
   const missing = [];
 
@@ -287,15 +494,10 @@ function validateEnvironmentVariables() {
   }
 
   if (missing.length > 0) {
-    console.warn("⚠️  Missing environment variables (server will continue with limited functionality):");
-    missing.forEach(varName => console.warn(`   - ${varName}`));
-    console.warn("\n💡 For full functionality, set these environment variables:");
-    console.warn("   - DATABASE_URL (general database connection)");
-    console.warn("   - MONGODB_URL (MongoDB connection)");
-    console.warn("   - POSTGRES_URL (PostgreSQL connection)");
-    console.warn("   - STRIPE_KEY (Stripe payments)");
-    console.warn("   - JWT_SECRET (authentication)");
-    console.warn("\n🔄 Server continuing with fallback/default values...\n");
+    logger.warn('Missing environment variables - server continuing with limited functionality', {
+      missing,
+      hint: 'Set DATABASE_URL, MONGODB_URL, POSTGRES_URL, STRIPE_KEY, JWT_SECRET for full functionality'
+    });
 
     // Don't exit - let the server continue with warnings
     return false;
@@ -307,62 +509,10 @@ function validateEnvironmentVariables() {
 const envValidationPassed = validateEnvironmentVariables();
 
 if (envValidationPassed) {
-  console.log('✅ Environment variables validated successfully');
+  logger.info('Environment variables validated successfully');
 }
 
-console.log('Single-client backend initialized');
-
-// Development mode check
-const isDevelopment = process.env.NODE_ENV !== 'production';
-
-// Structured logging system (no external dependencies)
-const logger = {
-  error: (message, meta = {}) => {
-    const logEntry = {
-      level: 'ERROR',
-      timestamp: new Date().toISOString(),
-      message,
-      ...meta
-    };
-    console.error(isDevelopment ? JSON.stringify(logEntry, null, 2) : JSON.stringify(logEntry));
-  },
-
-  warn: (message, meta = {}) => {
-    const logEntry = {
-      level: 'WARN',
-      timestamp: new Date().toISOString(),
-      message,
-      ...meta
-    };
-    console.warn(isDevelopment ? JSON.stringify(logEntry, null, 2) : JSON.stringify(logEntry));
-  },
-
-  info: (message, meta = {}) => {
-    const logEntry = {
-      level: 'INFO',
-      timestamp: new Date().toISOString(),
-      message,
-      ...meta
-    };
-    console.log(isDevelopment ? JSON.stringify(logEntry, null, 2) : JSON.stringify(logEntry));
-  },
-
-  debug: (message, meta = {}) => {
-    if (!isDevelopment) return;
-    const logEntry = {
-      level: 'DEBUG',
-      timestamp: new Date().toISOString(),
-      message,
-      ...meta
-    };
-    console.log(JSON.stringify(logEntry, null, 2));
-  }
-};
-
-// Log server initialization
-logger.info('Server initialization started', {
-  environment: isDevelopment ? 'development' : 'production'
-});
+logger.info('Single-client backend initialized');
 
 // ==== DATABASE CONFIG ====
 // Single database configuration - no origin-based routing needed
@@ -374,11 +524,30 @@ let stripe = null;
 if (STRIPE_KEY) {
   stripe = new Stripe(STRIPE_KEY);
 } else {
-  console.warn('⚠️  STRIPE_KEY not set - Stripe functionality will be disabled');
+  logger.warn('STRIPE_KEY not set - Stripe functionality disabled');
 }
 
 // Single database config - always use the same one
 const currentDbConfig = dbConfig;
+
+/**
+ * Database helper with pre-bound configuration
+ *
+ * Provides shorthand methods for database operations without repeating
+ * dbType, db, connectionString on every call.
+ *
+ * @type {Object}
+ */
+const db = {
+  findUser: (query, projection) => databaseManager.findUser(currentDbConfig.dbType, currentDbConfig.db, currentDbConfig.connectionString, query, projection),
+  insertUser: (userData) => databaseManager.insertUser(currentDbConfig.dbType, currentDbConfig.db, currentDbConfig.connectionString, userData),
+  updateUser: (query, update) => databaseManager.updateUser(currentDbConfig.dbType, currentDbConfig.db, currentDbConfig.connectionString, query, update),
+  findAuth: (query) => databaseManager.findAuth(currentDbConfig.dbType, currentDbConfig.db, currentDbConfig.connectionString, query),
+  insertAuth: (authData) => databaseManager.insertAuth(currentDbConfig.dbType, currentDbConfig.db, currentDbConfig.connectionString, authData),
+  findWebhookEvent: (eventId) => databaseManager.findWebhookEvent(currentDbConfig.dbType, currentDbConfig.db, currentDbConfig.connectionString, eventId),
+  insertWebhookEvent: (eventId, eventType, processedAt) => databaseManager.insertWebhookEvent(currentDbConfig.dbType, currentDbConfig.db, currentDbConfig.connectionString, eventId, eventType, processedAt),
+  executeQuery: (queryObject) => databaseManager.executeQuery(currentDbConfig.dbType, currentDbConfig.db, currentDbConfig.connectionString, queryObject)
+};
 
 // ==== HONO SETUP ====
 const app = new Hono();
@@ -400,6 +569,9 @@ app.use('*', cors({
   credentials: true
 }));
 
+// Rate limiting middleware
+app.use('*', rateLimitMiddleware);
+
 // Apache Common Log Format middleware
 app.use('*', async (c, next) => {
   const start = Date.now();
@@ -413,7 +585,7 @@ app.use('*', async (c, next) => {
   console.log(`[${timestamp}] "${method} ${url}" ${status} (${duration}ms)`);
 });
 
-// Security headers middleware
+// Security headers middleware (BXFav CSP: Umami analytics)
 app.use('*', secureHeaders({
   contentSecurityPolicy: {
     defaultSrc: ["'self'"],
@@ -424,7 +596,7 @@ app.use('*', secureHeaders({
     connectSrc: ["'self'", "https://aob.bixbyapps.com"],
     frameAncestors: ["'none'"]
   },
-  strictTransportSecurity: isDevelopment ? false : 'max-age=31536000; includeSubDomains; preload',
+  strictTransportSecurity: !isProd() ? false : 'max-age=31536000; includeSubDomains; preload',
   xFrameOptions: 'DENY',
   xContentTypeOptions: 'nosniff',
   referrerPolicy: 'strict-origin-when-cross-origin',
@@ -436,14 +608,11 @@ app.use('*', secureHeaders({
   }
 }));
 
-// Global rate limiter
-app.use('*', globalLimiter);
-
 // Request logging middleware (dev only)
 app.use('*', async (c, next) => {
-  if (isDevelopment) {
+  if (!isProd()) {
     const requestId = Math.random().toString(36).substr(2, 9);
-    console.log(`[${new Date().toISOString()}] ${c.req.method} ${c.req.path} - ID: ${requestId}`);
+    logger.debug('Request received', { method: c.req.method, path: c.req.path, requestId });
   }
   await next();
 });
@@ -520,7 +689,8 @@ async function generateToken(userID) {
 /**
  * Authentication middleware using JWT from HttpOnly cookie
  *
- * Verifies JWT token from 'token' cookie. Sets userID in context on success.
+ * Verifies JWT token from 'token' cookie. Sets userID in context on success,
+ * normalized to string for consistent Map key usage across middleware (CSRF, sessions).
  * Returns 401 for missing, expired, or invalid tokens. Returns 503 if
  * JWT_SECRET not configured.
  *
@@ -542,7 +712,9 @@ async function authMiddleware(c, next) {
 
   try {
     const payload = jwt.verify(token, JWT_SECRET, { algorithms: ["HS256"] });
-    c.set('userID', payload.userID);
+    // Normalize userID to string for consistent Map key usage (CSRF, sessions)
+    const normalizedUserID = String(payload.userID);
+    c.set('userID', normalizedUserID);
     await next();
   } catch (error) {
     if (error.name === 'TokenExpiredError') {
@@ -637,6 +809,43 @@ const validateName = (name) => {
   return true;
 };
 
+/**
+ * Set authentication cookies and generate CSRF token for user session
+ *
+ * Creates CSRF token, stores it in memory, and sets both JWT (HttpOnly) and
+ * CSRF (readable) cookies. Consolidates duplicate cookie logic from signup/signin.
+ *
+ * @async
+ * @param {Context} c - Hono context
+ * @param {string} userID - User ID to associate with session
+ * @param {string} jwtToken - Pre-generated JWT token
+ * @returns {string} Generated CSRF token
+ */
+function setAuthCookies(c, userID, jwtToken) {
+  const csrfToken = generateCSRFToken();
+  csrfTokenStore.set(userID.toString(), { token: csrfToken, timestamp: Date.now() });
+
+  // Set HttpOnly JWT cookie
+  setCookie(c, 'token', jwtToken, {
+    httpOnly: true,
+    secure: isProd(),
+    sameSite: 'Strict',
+    path: '/',
+    maxAge: tokenExpirationDays * 24 * 60 * 60
+  });
+
+  // Set CSRF token cookie (readable by frontend)
+  setCookie(c, 'csrf_token', csrfToken, {
+    httpOnly: false,
+    secure: isProd(),
+    sameSite: 'Lax',
+    path: '/',
+    maxAge: CSRF_TOKEN_EXPIRY / 1000
+  });
+
+  return csrfToken;
+}
+
 // ==== STRIPE WEBHOOK (raw body needed) ====
 app.post("/api/payment", async (c) => {
   logger.info('Payment webhook received');
@@ -655,37 +864,101 @@ app.post("/api/payment", async (c) => {
   }
 
   try {
-    // Use the single database config for webhooks
-    const webhookConfig = currentDbConfig;
-    const { customer: stripeID, current_period_end, status } = event.data.object;
-
-    // Validate required fields exist
-    if (!stripeID) {
-      logger.error('Webhook missing customer ID');
-      return c.body(null, 400);
+    // Idempotency check - skip if already processed
+    const existingEvent = await db.findWebhookEvent(event.id);
+    if (existingEvent) {
+      logger.info('Webhook event already processed, skipping', { eventId: event.id });
+      return c.body(null, 200);
     }
 
-    const customer = await stripe.customers.retrieve(stripeID);
+    // Record event BEFORE processing to prevent race conditions
+    await db.insertWebhookEvent(event.id, event.type, Date.now());
 
-    // Null check for customer email
-    if (!customer || !customer.email) {
-      logger.error('Webhook: Customer has no email', { stripeID });
-      return c.body(null, 400);
-    }
+    const eventObject = event.data.object;
 
-    const customerEmail = customer.email.toLowerCase();
+    // Handle subscription lifecycle events
+    if (["customer.subscription.deleted", "customer.subscription.updated", "customer.subscription.created"].includes(event.type)) {
+      const { customer: stripeID, current_period_end, status } = eventObject;
+      if (!stripeID) {
+        logger.error('Webhook missing customer ID', { type: event.type });
+        return c.body(null, 400);
+      }
 
-    if (["customer.subscription.deleted", "customer.subscription.updated","customer.subscription.created"].includes(event.type)) {
-      logger.info('Webhook processed', { type: event.type });
-      const user = await databaseManager.findUser(webhookConfig.dbType, webhookConfig.db, webhookConfig.connectionString, { email: customerEmail });
+      const customer = await stripe.customers.retrieve(stripeID);
+      if (!customer || !customer.email) {
+        logger.error('Webhook: Customer has no email', { stripeID });
+        return c.body(null, 400);
+      }
+
+      const customerEmail = customer.email.toLowerCase();
+      const user = await db.findUser({ email: customerEmail });
       if (user) {
-        await databaseManager.updateUser(webhookConfig.dbType, webhookConfig.db, webhookConfig.connectionString, { email: customerEmail }, {
+        await db.updateUser({ email: customerEmail }, {
           $set: { subscription: { stripeID, expires: current_period_end, status } }
         });
+        logger.info('Subscription updated', { type: event.type, email: customerEmail, status });
       } else {
-        logger.warn('Webhook: No user found for email');
+        logger.warn('Webhook: No user found for email', { email: customerEmail });
       }
     }
+
+    // Handle checkout session completed (initial subscription)
+    if (event.type === "checkout.session.completed") {
+      const { customer: stripeID, customer_email, subscription: subscriptionId } = eventObject;
+      if (subscriptionId && stripeID) {
+        const subscriptionPromise = stripe.subscriptions.retrieve(subscriptionId);
+        const customerPromise = !customer_email ? stripe.customers.retrieve(stripeID) : null;
+        const [subscription, fetchedCustomer] = await Promise.all([subscriptionPromise, customerPromise]);
+        const customerEmail = (customer_email || fetchedCustomer.email).toLowerCase();
+        const user = await db.findUser({ email: customerEmail });
+        if (user) {
+          await db.updateUser({ email: customerEmail }, {
+            $set: { subscription: { stripeID, expires: subscription.current_period_end, status: subscription.status } }
+          });
+          logger.info('Checkout completed', { email: customerEmail, status: subscription.status });
+        }
+      }
+    }
+
+    // Handle invoice paid (recurring payment success)
+    if (event.type === "invoice.paid") {
+      const { customer: stripeID, subscription: subscriptionId } = eventObject;
+      if (subscriptionId && stripeID) {
+        const [subscription, customer] = await Promise.all([
+          stripe.subscriptions.retrieve(subscriptionId),
+          stripe.customers.retrieve(stripeID)
+        ]);
+        if (customer?.email) {
+          const customerEmail = customer.email.toLowerCase();
+          const user = await db.findUser({ email: customerEmail });
+          if (user) {
+            await db.updateUser({ email: customerEmail }, {
+              $set: { subscription: { stripeID, expires: subscription.current_period_end, status: subscription.status } }
+            });
+            logger.info('Invoice paid', { email: customerEmail });
+          }
+        }
+      }
+    }
+
+    // Handle invoice payment failed
+    if (event.type === "invoice.payment_failed") {
+      const { customer: stripeID } = eventObject;
+      if (stripeID) {
+        const customer = await stripe.customers.retrieve(stripeID);
+        if (customer?.email) {
+          const customerEmail = customer.email.toLowerCase();
+          const user = await db.findUser({ email: customerEmail });
+          if (user) {
+            await db.updateUser({ email: customerEmail }, {
+              $set: { 'subscription.paymentFailed': true, 'subscription.paymentFailedAt': Date.now() }
+            });
+            logger.warn('Invoice payment failed', { email: customerEmail });
+          }
+        }
+      }
+    }
+
     return c.body(null, 200);
   } catch (e) {
     logger.error('Webhook processing error', { error: e.message });
@@ -696,10 +969,34 @@ app.post("/api/payment", async (c) => {
 // ==== STATIC ROUTES ====
 app.get("/api/health", (c) => c.json({ status: "ok", timestamp: Date.now() }));
 
-// ==== AUTH ROUTES ====
-app.post("/api/signup", authLimiter, async (c) => {
+/**
+ * Parse JSON request body with proper error handling
+ *
+ * Returns parsed JSON or null if parsing fails. Sets 400 response on failure.
+ * Handles SyntaxError from malformed JSON.
+ *
+ * @async
+ * @param {Context} c - Hono context
+ * @returns {Promise<Object|null>} Parsed body or null on error
+ */
+async function parseJsonBody(c) {
   try {
-    const body = await c.req.json();
+    return await c.req.json();
+  } catch (e) {
+    if (e instanceof SyntaxError) {
+      return null;
+    }
+    throw e;
+  }
+}
+
+// ==== AUTH ROUTES ====
+app.post("/api/signup", async (c) => {
+  try {
+    const body = await parseJsonBody(c);
+    if (!body) {
+      return c.json({ error: 'Invalid request body' }, 400);
+    }
     let { email, password, name } = body;
 
     // Validation
@@ -720,38 +1017,30 @@ app.post("/api/signup", authLimiter, async (c) => {
     let insertID = generateUUID()
 
     try {
-      const result = await databaseManager.insertUser(currentDbConfig.dbType, currentDbConfig.db, currentDbConfig.connectionString, {
+      // Insert user first
+      await db.insertUser({
         _id: insertID,
         email: email,
         name: name,
         created_at: Date.now()
       });
 
+      // Insert auth record (compensating delete on failure)
+      try {
+        await db.insertAuth({ email: email, password: hash, userID: insertID });
+      } catch (authError) {
+        // Rollback: delete the user we just created
+        logger.error('Auth insert failed, rolling back user creation', { error: authError.message });
+        try {
+          await db.executeQuery({ query: 'DELETE FROM Users WHERE _id = ?', params: [insertID] });
+        } catch (rollbackError) {
+          logger.error('Rollback failed - orphaned user record', { userID: insertID, error: rollbackError.message });
+        }
+        throw authError;
+      }
+
       const token = await generateToken(insertID);
-      await databaseManager.insertAuth(currentDbConfig.dbType, currentDbConfig.db, currentDbConfig.connectionString, { email: email, password: hash, userID: insertID });
-
-      // Generate CSRF token
-      const csrfToken = generateCSRFToken();
-      csrfTokenStore.set(insertID.toString(), { token: csrfToken, timestamp: Date.now() });
-
-      // Set HttpOnly cookie
-      setCookie(c, 'token', token, {
-        httpOnly: true,
-        secure: !isDevelopment,
-        sameSite: 'Strict',
-        path: '/',
-        maxAge: tokenExpirationDays * 24 * 60 * 60
-      });
-
-      // Set CSRF token cookie (readable by frontend)
-      setCookie(c, 'csrf_token', csrfToken, {
-        httpOnly: false,
-        secure: !isDevelopment,
-        sameSite: 'Lax',
-        path: '/',
-        maxAge: CSRF_TOKEN_EXPIRY / 1000
-      });
-
+      setAuthCookies(c, insertID, token);
       logger.info('Signup success');
 
       return c.json({
@@ -773,9 +1062,12 @@ app.post("/api/signup", authLimiter, async (c) => {
   }
 });
 
-app.post("/api/signin", authLimiter, async (c) => {
+app.post("/api/signin", async (c) => {
   try {
-    const body = await c.req.json();
+    const body = await parseJsonBody(c);
+    if (!body) {
+      return c.json({ error: 'Invalid request body' }, 400);
+    }
     let { email, password } = body;
 
     // Validation
@@ -789,51 +1081,44 @@ app.post("/api/signin", authLimiter, async (c) => {
     email = email.toLowerCase().trim();
     logger.debug('Attempting signin');
 
+    // Check account lockout
+    const lockStatus = isAccountLocked(email);
+    if (lockStatus.locked) {
+      c.header('Retry-After', String(lockStatus.remainingTime));
+      return c.json({
+        error: 'Account temporarily locked. Try again later.',
+        retryAfter: lockStatus.remainingTime
+      }, 429);
+    }
+
     // Check if auth exists
-    const auth = await databaseManager.findAuth(currentDbConfig.dbType, currentDbConfig.db, currentDbConfig.connectionString, { email: email });
+    const auth = await db.findAuth( { email: email });
     if (!auth) {
       logger.debug('Auth record not found');
+      recordFailedLogin(email);
       return c.json({ error: "Invalid credentials" }, 401);
     }
 
-    //verify
+    // Verify password
     if (!(await verifyPassword(password, auth.password))) {
       logger.debug('Password verification failed');
+      recordFailedLogin(email);
       return c.json({ error: "Invalid credentials" }, 401);
     }
 
-    // get user
-    const user = await databaseManager.findUser(currentDbConfig.dbType, currentDbConfig.db, currentDbConfig.connectionString, { email: email });
+    // Get user
+    const user = await db.findUser( { email: email });
     if (!user) {
       logger.error('User not found for auth record');
       return c.json({ error: "Invalid credentials" }, 401);
     }
 
-    // generate token
+    // Clear failed attempts on successful login
+    clearFailedLogins(email);
+
+    // Generate token
     const token = await generateToken(user._id.toString());
-
-    // Generate CSRF token
-    const csrfToken = generateCSRFToken();
-    csrfTokenStore.set(user._id.toString(), { token: csrfToken, timestamp: Date.now() });
-
-    // Set HttpOnly cookie
-    setCookie(c, 'token', token, {
-      httpOnly: true,
-      secure: !isDevelopment,
-      sameSite: 'Strict',
-      path: '/',
-      maxAge: tokenExpirationDays * 24 * 60 * 60
-    });
-
-    // Set CSRF token cookie (readable by frontend)
-    setCookie(c, 'csrf_token', csrfToken, {
-      httpOnly: false,
-      secure: !isDevelopment,
-      sameSite: 'Lax',
-      path: '/',
-      maxAge: CSRF_TOKEN_EXPIRY / 1000
-    });
-
+    setAuthCookies(c, user._id, token);
     logger.info('Signin success');
 
     return c.json({
@@ -865,7 +1150,7 @@ app.post("/api/signout", authMiddleware, async (c) => {
     // Clear the HttpOnly cookie
     deleteCookie(c, 'token', {
       httpOnly: true,
-      secure: !isDevelopment,
+      secure: isProd(),
       sameSite: 'Strict',
       path: '/'
     });
@@ -873,7 +1158,7 @@ app.post("/api/signout", authMiddleware, async (c) => {
     // Clear the CSRF token cookie
     deleteCookie(c, 'csrf_token', {
       httpOnly: false,
-      secure: !isDevelopment,
+      secure: isProd(),
       sameSite: 'Lax',
       path: '/'
     });
@@ -887,9 +1172,9 @@ app.post("/api/signout", authMiddleware, async (c) => {
 });
 
 // ==== USER DATA ROUTES ====
-app.get("/api/me", userLimiter, authMiddleware, async (c) => {
+app.get("/api/me", authMiddleware, async (c) => {
   const userID = c.get('userID');
-  const user = await databaseManager.findUser(currentDbConfig.dbType, currentDbConfig.db, currentDbConfig.connectionString, { _id: userID });
+  const user = await db.findUser( { _id: userID });
   logger.debug('/me checking for user');
   if (!user) return c.json({ error: "User not found" }, 404);
   return c.json(user);
@@ -910,7 +1195,7 @@ app.put("/api/me", authMiddleware, csrfProtection, async (c) => {
     const UPDATEABLE_USER_FIELDS = ['name'];
 
     // Find user first to verify existence
-    const user = await databaseManager.findUser(currentDbConfig.dbType, currentDbConfig.db, currentDbConfig.connectionString, { _id: userID });
+    const user = await db.findUser( { _id: userID });
     if (!user) return c.json({ error: "User not found" }, 404);
 
     // Whitelist approach - only allow specific fields
@@ -927,14 +1212,14 @@ app.put("/api/me", authMiddleware, csrfProtection, async (c) => {
     }
 
     // Update user document
-    const result = await databaseManager.updateUser(currentDbConfig.dbType, currentDbConfig.db, currentDbConfig.connectionString, { _id: userID }, { $set: update });
+    const result = await db.updateUser( { _id: userID }, { $set: update });
 
     if (result.modifiedCount === 0) {
       return c.json({ error: "No changes made" }, 400);
     }
 
     // Return updated user
-    const updatedUser = await databaseManager.findUser(currentDbConfig.dbType, currentDbConfig.db, currentDbConfig.connectionString, { _id: userID });
+    const updatedUser = await db.findUser( { _id: userID });
     return c.json(updatedUser);
   } catch (err) {
     logger.error('Update user error', { error: err.message });
@@ -954,7 +1239,7 @@ app.post("/api/usage", authMiddleware, async (c) => {
     }
 
     // Get user
-    const user = await databaseManager.findUser(currentDbConfig.dbType, currentDbConfig.db, currentDbConfig.connectionString, { _id: userID });
+    const user = await db.findUser( { _id: userID });
     if (!user) return c.json({ error: "User not found" }, 404);
 
     // Check if user is a subscriber - subscribers get unlimited
@@ -984,7 +1269,7 @@ app.post("/api/usage", authMiddleware, async (c) => {
     if (!usage.reset_at || now > usage.reset_at) {
       const newResetAt = now + (30 * 24 * 60 * 60); // 30 days from now
       // Reset usage - atomic set operation
-      await databaseManager.updateUser(currentDbConfig.dbType, currentDbConfig.db, currentDbConfig.connectionString,
+      await db.updateUser(
         { _id: userID },
         { $set: { usage: { count: 0, reset_at: newResetAt } } }
       );
@@ -994,18 +1279,18 @@ app.post("/api/usage", authMiddleware, async (c) => {
     if (operation === 'track') {
       // Atomic increment first to prevent race conditions
       // Then verify we haven't exceeded the limit
-      await databaseManager.updateUser(currentDbConfig.dbType, currentDbConfig.db, currentDbConfig.connectionString,
+      await db.updateUser(
         { _id: userID },
         { $inc: { 'usage.count': 1 } }
       );
 
       // Re-read user to get actual count after atomic increment
-      const updatedUser = await databaseManager.findUser(currentDbConfig.dbType, currentDbConfig.db, currentDbConfig.connectionString, { _id: userID });
+      const updatedUser = await db.findUser( { _id: userID });
       const actualCount = updatedUser?.usage?.count || 1;
 
       // If we exceeded the limit, rollback the increment and return 429
       if (actualCount > limit) {
-        await databaseManager.updateUser(currentDbConfig.dbType, currentDbConfig.db, currentDbConfig.connectionString,
+        await db.updateUser(
           { _id: userID },
           { $inc: { 'usage.count': -1 } }
         );
@@ -1038,78 +1323,20 @@ app.post("/api/usage", authMiddleware, async (c) => {
   }
 });
 
-// ==== PAYMENT ROUTES ====
-app.post("/api/checkout", paymentLimiter, authMiddleware, csrfProtection, async (c) => {
-  try {
-    const userID = c.get('userID');
-    const body = await c.req.json();
-    const { email, lookup_key } = body;
-
-    if (!email || !lookup_key) return c.json({ error: "Missing email or lookup_key" }, 400);
-
-    // Verify the email matches the authenticated user
-    const user = await databaseManager.findUser(currentDbConfig.dbType, currentDbConfig.db, currentDbConfig.connectionString, { _id: userID });
-    if (!user || user.email !== email) return c.json({ error: "Email mismatch" }, 403);
-
-    const prices = await stripe.prices.list({ lookup_keys: [lookup_key], expand: ["data.product"] });
-
-    if (!prices.data || prices.data.length === 0) {
-      return c.json({ error: `No price found for lookup_key: ${lookup_key}` }, 400);
-    }
-
-    // Use FRONTEND_URL env var or origin header, fallback to localhost for dev
-    const origin = process.env.FRONTEND_URL || c.req.header('origin') || `http://localhost:${port}`;
-
-    const session = await stripe.checkout.sessions.create({
-      customer_email: email,
-      mode: "subscription",
-      payment_method_types: ["card"],
-      line_items: [{ price: prices.data[0].id, quantity: 1 }],
-      billing_address_collection: "auto",
-      success_url: `${origin}/app/payment?success=true`,
-      cancel_url: `${origin}/app/payment?canceled=true`,
-      subscription_data: { metadata: { email } },
-    });
-    return c.json({ url: session.url, id: session.id, customerID: session.customer });
-  } catch (e) {
-    logger.error('Checkout session error', { error: e.message });
-    return c.json({ error: "Stripe session failed" }, 500);
-  }
-});
-
-app.post("/api/portal", paymentLimiter, authMiddleware, csrfProtection, async (c) => {
-  try {
-    const userID = c.get('userID');
-    const body = await c.req.json();
-    const { customerID } = body;
-
-    if (!customerID) return c.json({ error: "Missing customerID" }, 400);
-
-    // Verify the customerID matches the authenticated user's subscription
-    const user = await databaseManager.findUser(currentDbConfig.dbType, currentDbConfig.db, currentDbConfig.connectionString, { _id: userID });
-    if (!user || (user.subscription?.stripeID && user.subscription.stripeID !== customerID)) {
-      return c.json({ error: "Unauthorized customerID" }, 403);
-    }
-
-    // Use FRONTEND_URL env var or origin header, fallback to localhost for dev
-    const origin = process.env.FRONTEND_URL || c.req.header('origin') || `http://localhost:${port}`;
-    const portalSession = await stripe.billingPortal.sessions.create({
-      customer: customerID,
-      return_url: `${origin}/app/payment?portal=return`,
-    });
-    return c.json({ url: portalSession.url, id: portalSession.id });
-  } catch (e) {
-    logger.error('Portal session error', { error: e.message });
-    return c.json({ error: "Stripe portal failed" }, 500);
-  }
-});
-
 // ==== FAVORITES ROUTES ====
+
 /**
- * Get favorites for a user
- * Supports ?uid=<userID> or ?username=<name> query params
+ * GET /api/favorites - Get favorites for a user
+ *
+ * Supports ?uid=<userID> or ?username=<name> query params.
+ * Returns array of favorite objects excluding soft-deleted ones.
+ * Uses databaseManager.find (non-standard adapter method).
+ *
+ * @param {string} [uid] - User ID to fetch favorites for
+ * @param {string} [username] - Username to look up and fetch favorites for
+ * @returns {Array} Array of favorite objects
  */
-app.get("/api/favorites", userLimiter, async (c) => {
+app.get("/api/favorites", async (c) => {
   try {
     const uid = c.req.query('uid');
     const username = c.req.query('username');
@@ -1119,7 +1346,7 @@ app.get("/api/favorites", userLimiter, async (c) => {
       query = { userID: uid, deleted: { $ne: true } };
     } else if (username) {
       // Find user by name first
-      const user = await databaseManager.findUser(currentDbConfig.dbType, currentDbConfig.db, currentDbConfig.connectionString, {
+      const user = await db.findUser({
         name: { $regex: new RegExp(`^${username}$`, 'i') }
       });
       if (!user) {
@@ -1139,9 +1366,14 @@ app.get("/api/favorites", userLimiter, async (c) => {
 });
 
 /**
- * Get all user profiles (for profile listing)
+ * GET /api/profiles - List all user profiles (public info only)
+ *
+ * Returns array of { _id, name } objects for all users.
+ * Uses databaseManager.find (non-standard adapter method).
+ *
+ * @returns {Array} Array of profile objects with _id and name
  */
-app.get("/api/profiles", userLimiter, async (c) => {
+app.get("/api/profiles", async (c) => {
   try {
     const users = await databaseManager.find(currentDbConfig.dbType, currentDbConfig.db, currentDbConfig.connectionString, 'users', {});
     // Return only public profile info
@@ -1157,7 +1389,13 @@ app.get("/api/profiles", userLimiter, async (c) => {
 });
 
 /**
- * Create a new favorite
+ * POST /api/favorites - Create a new favorite
+ *
+ * Creates a favorite with title, address, coordinates, notes, placeID, details.
+ * Uses databaseManager.insert (non-standard adapter method).
+ *
+ * @param {Object} body - Favorite data (title, address, coordinates, notes, placeID, details)
+ * @returns {Object} Created favorite with generated _id
  */
 app.post("/api/favorites", authMiddleware, csrfProtection, async (c) => {
   try {
@@ -1195,7 +1433,14 @@ app.post("/api/favorites", authMiddleware, csrfProtection, async (c) => {
 });
 
 /**
- * Update a favorite
+ * PUT /api/favorites - Update a favorite
+ *
+ * Updates notes, placeID, coordinates, details on an existing favorite.
+ * Verifies ownership before updating. Uses databaseManager.findOne and
+ * databaseManager.update (non-standard adapter methods).
+ *
+ * @param {Object} body - Update data with _id and fields to update
+ * @returns {Object} Updated favorite object
  */
 app.put("/api/favorites", authMiddleware, csrfProtection, async (c) => {
   try {
@@ -1240,7 +1485,14 @@ app.put("/api/favorites", authMiddleware, csrfProtection, async (c) => {
 });
 
 /**
- * Soft delete a favorite
+ * DELETE /api/favorites - Soft delete a favorite
+ *
+ * Marks a favorite as deleted by setting deleted: true.
+ * Verifies ownership before deleting. Uses databaseManager.findOne and
+ * databaseManager.update (non-standard adapter methods).
+ *
+ * @param {Object} body - Object with _id of favorite to delete
+ * @returns {Object} Success indicator
  */
 app.delete("/api/favorites", authMiddleware, csrfProtection, async (c) => {
   try {
@@ -1268,6 +1520,72 @@ app.delete("/api/favorites", authMiddleware, csrfProtection, async (c) => {
   } catch (e) {
     logger.error('Delete favorite error', { error: e.message });
     return c.json({ error: "Failed to delete favorite" }, 500);
+  }
+});
+
+// ==== PAYMENT ROUTES ====
+app.post("/api/checkout", authMiddleware, csrfProtection, async (c) => {
+  try {
+    const userID = c.get('userID');
+    const body = await c.req.json();
+    const { email, lookup_key } = body;
+
+    if (!email || !lookup_key) return c.json({ error: "Missing email or lookup_key" }, 400);
+
+    // Verify the email matches the authenticated user
+    const user = await db.findUser( { _id: userID });
+    if (!user || user.email !== email) return c.json({ error: "Email mismatch" }, 403);
+
+    const prices = await stripe.prices.list({ lookup_keys: [lookup_key], expand: ["data.product"] });
+
+    if (!prices.data || prices.data.length === 0) {
+      return c.json({ error: `No price found for lookup_key: ${lookup_key}` }, 400);
+    }
+
+    // Use FRONTEND_URL env var or origin header, fallback to localhost for dev
+    const origin = process.env.FRONTEND_URL || c.req.header('origin') || `http://localhost:${port}`;
+
+    const session = await stripe.checkout.sessions.create({
+      customer_email: email,
+      mode: "subscription",
+      payment_method_types: ["card"],
+      line_items: [{ price: prices.data[0].id, quantity: 1 }],
+      billing_address_collection: "auto",
+      success_url: `${origin}/app/payment?success=true`,
+      cancel_url: `${origin}/app/payment?canceled=true`,
+      subscription_data: { metadata: { email } },
+    });
+    return c.json({ url: session.url, id: session.id, customerID: session.customer });
+  } catch (e) {
+    logger.error('Checkout session error', { error: e.message });
+    return c.json({ error: "Stripe session failed" }, 500);
+  }
+});
+
+app.post("/api/portal", authMiddleware, csrfProtection, async (c) => {
+  try {
+    const userID = c.get('userID');
+    const body = await c.req.json();
+    const { customerID } = body;
+
+    if (!customerID) return c.json({ error: "Missing customerID" }, 400);
+
+    // Verify the customerID matches the authenticated user's subscription
+    const user = await db.findUser( { _id: userID });
+    if (!user || (user.subscription?.stripeID && user.subscription.stripeID !== customerID)) {
+      return c.json({ error: "Unauthorized customerID" }, 403);
+    }
+
+    // Use FRONTEND_URL env var or origin header, fallback to localhost for dev
+    const origin = process.env.FRONTEND_URL || c.req.header('origin') || `http://localhost:${port}`;
+    const portalSession = await stripe.billingPortal.sessions.create({
+      customer: customerID,
+      return_url: `${origin}/app/payment?portal=return`,
+    });
+    return c.json({ url: portalSession.url, id: portalSession.id });
+  } catch (e) {
+    logger.error('Portal session error', { error: e.message });
+    return c.json({ error: "Stripe portal failed" }, 500);
   }
 });
 
@@ -1309,69 +1627,91 @@ app.onError((err, c) => {
 
   logger.error('Unhandled error occurred', {
     message: err.message,
-    stack: isDevelopment ? err.stack : undefined,
+    stack: !isProd() ? err.stack : undefined,
     path: c.req.path,
     method: c.req.method,
     requestId
   });
 
   return c.json({
-    error: isDevelopment ? err.message : 'Internal server error',
-    ...(isDevelopment && { stack: err.stack })
+    error: !isProd() ? err.message : 'Internal server error',
+    ...(!isProd() && { stack: err.stack })
   }, 500);
 });
 
 // ==== UTILITY FUNCTIONS ====
+
+/**
+ * Check if the server is running in production mode
+ *
+ * Reads the NODE_ENV environment variable. Returns true only when
+ * NODE_ENV is explicitly set to "production".
+ *
+ * @returns {boolean} True if NODE_ENV === "production"
+ */
 function isProd() {
-  if (typeof process.env.ENV === "undefined") {
-    return false
-  } else if (process.env.ENV === "production") {
-    return true
-  } else {
-    return false
-  }
+  return process.env.NODE_ENV === 'production';
 }
 
+/**
+ * Load environment variables from .env and optional .env.local file.
+ *
+ * Reads in two passes: backend/.env first (may be symlink to shared creds),
+ * then backend/.env.local for project-specific overrides (wins on conflict).
+ * Creates .env from .env.example if it doesn't exist. Only called in
+ * non-production mode — Railway injects vars directly in prod.
+ *
+ * @returns {void}
+ */
 function loadLocalENV() {
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = dirname(__filename);
   const envFilePath = resolve(__dirname, './.env');
+  const envLocalPath = resolve(__dirname, './.env.local');
   const envExamplePath = resolve(__dirname, './.env.example');
 
   // Check if .env exists, if not create it from .env.example
   try {
     statSync(envFilePath);
   } catch (err) {
-    // .env doesn't exist, try to create it from .env.example
     try {
       const exampleData = readFileSync(envExamplePath, 'utf8');
       writeFileSync(envFilePath, exampleData);
     } catch (exampleErr) {
-      console.error('Failed to create .env from template:', exampleErr);
+      logger.error('Failed to create .env from template', { error: exampleErr.message });
       return;
     }
   }
 
+  // Load .env (may be symlink to shared creds)
+  loadEnvFile(envFilePath);
+
+  // Load .env.local overrides (project-specific, optional)
+  loadEnvFile(envLocalPath);
+}
+
+/**
+ * Parse a .env file and apply key=value pairs to process.env.
+ * Skips blank lines and comments. Handles quoted values and values containing '='.
+ * Silently skips if file doesn't exist.
+ * @param {string} filePath - Absolute path to the .env file
+ * @returns {void}
+ */
+function loadEnvFile(filePath) {
   try {
-    const data = readFileSync(envFilePath, 'utf8');
-    const lines = data.split(/\r?\n/);
-    for (let line of lines) {
+    const data = readFileSync(filePath, 'utf8');
+    for (let line of data.split(/\r?\n/)) {
       if (!line || line.trim().startsWith('#')) continue;
-
-      // Split only on first = and handle quoted values
       let [key, ...valueParts] = line.split('=');
-      let value = valueParts.join('='); // Rejoin in case value contains =
-
+      let value = valueParts.join('=');
       if (key && value) {
         key = key.trim();
-        value = value.trim();
-        // Remove surrounding quotes if present
-        value = value.replace(/^["']|["']$/g, '');
+        value = value.trim().replace(/^["']|["']$/g, '');
         process.env[key] = value;
       }
     }
-  } catch (err) {
-    console.error('Failed to load .env file:', err);
+  } catch {
+    // File doesn't exist or unreadable — silent
   }
 }
 
@@ -1383,7 +1723,7 @@ const server = serve({
 }, (info) => {
   logger.info('Server started successfully', {
     port: info.port,
-    environment: isDevelopment ? 'development' : 'production'
+    environment: !isProd() ? 'development' : 'production'
   });
 });
 
