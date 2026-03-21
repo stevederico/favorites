@@ -3,6 +3,9 @@
  * Safely handles umami not being loaded and sanitizes data
  */
 
+/** @returns {boolean} True if running on localhost — skip all tracking */
+const isLocal = () => ['localhost', '127.0.0.1'].includes(window.location.hostname);
+
 /**
  * Sanitize event data for Umami
  * Ensures data is always a valid object with proper types
@@ -45,6 +48,7 @@ const sanitizeEventData = (data) => {
  * @param {Object} data - Event data
  */
 export const trackEvent = (eventName, data = {}) => {
+  if (isLocal()) return;
   if (typeof window !== 'undefined' && window.umami) {
     try {
       const sanitizedData = sanitizeEventData(data);
@@ -61,6 +65,7 @@ export const trackEvent = (eventName, data = {}) => {
  * @param {Object} data - User metadata
  */
 export const identifyUser = (userId, data = {}) => {
+  if (isLocal()) return;
   if (typeof window !== 'undefined' && window.umami) {
     try {
       if (userId) {
@@ -78,6 +83,7 @@ export const identifyUser = (userId, data = {}) => {
  * Track a page view
  */
 export const trackPageView = () => {
+  if (isLocal()) return;
   if (typeof window !== 'undefined' && window.umami) {
     try {
       window.umami.track();
