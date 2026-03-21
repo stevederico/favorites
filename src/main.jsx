@@ -19,6 +19,7 @@
 import './assets/styles.css';
 import { createSkateboardApp } from '@stevederico/skateboard-ui/App';
 import { FavoritesProvider } from './contexts/FavoritesContext';
+import AnalyticsProvider from './components/AnalyticsProvider.jsx';
 import constants from './constants.json';
 import HomeView from './components/HomeView.jsx';
 import MapView from './components/MapView.jsx';
@@ -40,13 +41,17 @@ const appRoutes = [
 ];
 
 /**
- * Custom wrapper to include FavoritesProvider
- * Wraps all routes with favorites context
+ * Custom wrapper composing AnalyticsProvider and FavoritesProvider
+ * AnalyticsProvider handles page views, user identification, and passive tracking.
+ * FavoritesProvider provides favorites context to all routes.
+ *
+ * @param {Object} props
+ * @param {React.ReactNode} props.children - Child components (Router + App)
  */
 const AppWrapper = ({ children }) => (
-  <FavoritesProvider>
-    {children}
-  </FavoritesProvider>
+  <AnalyticsProvider>
+    <FavoritesProvider>{children}</FavoritesProvider>
+  </AnalyticsProvider>
 );
 
 /**

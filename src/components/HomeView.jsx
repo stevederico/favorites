@@ -5,8 +5,6 @@ import { useFavorites } from '../contexts/FavoritesContext';
 import DynamicIcon from '@stevederico/skateboard-ui/DynamicIcon';
 import { getBackendURL, timestampToString } from '@stevederico/skateboard-ui/Utilities';
 import { getState } from '@stevederico/skateboard-ui/Context';
-import { trackEvent } from '../utils/analytics';
-
 
 /**
  * HomeView Component
@@ -54,11 +52,9 @@ export default function HomeView() {
 
   // Load favorites on component mount
   useEffect(() => {
-    trackEvent('home-viewed');
     if (state.user != null){
       getFavorites();
     }
-
   }, [state.user]);
 
   // Implement search debouncing with 300ms delay
@@ -104,12 +100,13 @@ export default function HomeView() {
   return (
     <div className="px-4 py-6 bg-background min-h-screen">
       {/* Search Bar */}
-      <div className="relative mb-8">
+      <div data-section-id="search-bar" className="relative mb-8">
         <input
           type="text"
           value={searchQuery}
           onChange={handleSearchInput}
           placeholder="Search places..."
+          data-umami-event="search-input-focused"
           className="w-full pl-4 pr-12 py-3 rounded-xl bg-accent shadow-lg border border-gray-300 focus:outline-none focus:ring-2"
         />
         <DynamicIcon name="search" className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
@@ -117,7 +114,7 @@ export default function HomeView() {
 
       {searchQuery ? (
         // Search Results Section - Shown when user is searching
-        <div className="mb-8">
+        <div data-section-id="search-results" className="mb-8">
           <h2 className="text-xl font-bold mb-4">Search Results</h2>
           <div className="space-y-4">
             {isSearching ? (
@@ -132,6 +129,7 @@ export default function HomeView() {
                   {/* View on Map button */}
                   <Link
                     to={`/app/map?lat=${result.coordinates.lat}&lon=${result.coordinates.lon}&title=${encodeURIComponent(result.title)}&address=${encodeURIComponent(result.address)}`}
+                    data-umami-event="view-on-map-clicked"
                     className="flex items-center gap-2 px-4 py-2 rounded-full border border-blue-500 hover:bg-blue-600 transition-colors text-blue-500 cursor-pointer"
                   >
                     <DynamicIcon name="map-pin" size={16} />
@@ -145,6 +143,7 @@ export default function HomeView() {
                         const existingFav = favorites.find(fav => isInFavorites(result, [fav]));
                         if (existingFav) removeFavorite(existingFav._id);
                       }}
+                      data-umami-event="remove-favorite-clicked"
                       className="flex items-center gap-2 px-4 py-2 rounded-full bg-red-500 hover:bg-red-600 transition-colors cursor-pointer"
                     >
                       <DynamicIcon name="heart" size={16} />
@@ -153,6 +152,7 @@ export default function HomeView() {
                   ) : (
                     <button
                       onClick={() => addFavorite(result)}
+                      data-umami-event="add-favorite-clicked"
                       className="flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500 hover:bg-blue-600 transition-colors cursor-pointer"
                     >
                       <DynamicIcon name="heart" size={16} />
@@ -168,10 +168,10 @@ export default function HomeView() {
         // Dashboard view shown when not searching
         <>
           {/* Quick Actions Section - Map and Profile buttons */}
-          <div className="grid grid-cols-2 gap-4 mb-8">
+          <div data-section-id="quick-actions" className="grid grid-cols-2 gap-4 mb-8">
             <button className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl bg-purple-500 hover:bg-purple-600 transition-colors cursor-pointer"
+              data-umami-event="show-map-clicked"
               onClick={() => {
-                trackEvent('nav-clicked', { destination: 'map' });
                 navigate(`/app/map`);
               }}
             >
@@ -180,9 +180,9 @@ export default function HomeView() {
             </button>
             <button
               onClick={() => {
-                trackEvent('nav-clicked', { destination: 'my-favorites' });
                 navigate(`/app/${state.user?.name?.toLowerCase()}`);
               }}
+              data-umami-event="my-favorites-clicked"
               className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl bg-blue-500 hover:bg-blue-600 transition-colors cursor-pointer"
             >
               <DynamicIcon name="user" className="font-medium text-white" size={24} />
@@ -191,7 +191,7 @@ export default function HomeView() {
           </div>
 
           {/* Recent Activity Section - Shows latest favorites */}
-          <div className="mb-8">
+          <div data-section-id="recently-added" className="mb-8">
             <div className="flex items-center gap-2 mb-4">
               <DynamicIcon name="clock" size={24} className="text-orange-500" />
               <h2 className="text-xl font-bold">Recently Added</h2>
@@ -201,6 +201,7 @@ export default function HomeView() {
                 <div
                   key={`recent-${favorite._id}`}
                   onClick={() => navigate(`/app/map?lat=${favorite.coordinates?.lat}&lon=${favorite.coordinates?.lon}`)}
+                  data-umami-event="recent-favorite-clicked"
                   className="flex items-center justify-between p-3 bg-background rounded-lg hover:bg-blue-500/10 transition-colors cursor-pointer"
                 >
                   <div className="flex items-center gap-3">
@@ -214,7 +215,7 @@ export default function HomeView() {
           </div>
 
           {/* Profiles Grid Section - Shows available user profiles */}
-          <div className="mb-8">
+          <div data-section-id="profiles-grid" className="mb-8">
             <div className="flex items-center gap-3 mb-6">
               <DynamicIcon name="circle-user" size={24} className="text-blue-500" />
               <h2 className="text-xl font-bold">Profiles</h2>
@@ -224,7 +225,7 @@ export default function HomeView() {
                 <Link
                   key={profile._id}
                   to={`/app/map/${profile.name.toLowerCase()}`}
-                  onClick={() => trackEvent('profile-clicked', { profile: profile.name })}
+                  data-umami-event="profile-clicked"
                   className="bg-accent rounded-xl shadow-md p-6 hover:shadow-lg transition-all cursor-pointer"
                 >
                   <div className="flex items-center gap-4">

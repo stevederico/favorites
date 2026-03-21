@@ -29,6 +29,7 @@ return (
                             );
                             if (existingFav) removeFavorite(existingFav._id);
                         }}
+                        data-umami-event="remove-favorite-clicked"
                         className="flex items-center gap-2 px-4 py-2 rounded-full text-red-500 border border-red-500 hover:bg-red-600 transition-colors cursor-pointer"
                     >
                         <DynamicIcon name="x" size={16} />
@@ -37,6 +38,7 @@ return (
                 ) : (
                     <button
                         onClick={() => addFavorite(location)}
+                        data-umami-event="add-favorite-clicked"
                         className="flex items-center gap-2 px-4 py-2 rounded-full text-white bg-blue-500 hover:bg-blue-600 transition-colors cursor-pointer"
                     >
                         <DynamicIcon name="heart" size={16} />
@@ -46,6 +48,7 @@ return (
             ) : null}
             <Link
                 to={`/app/map?lat=${location.coordinates?.lat}&lon=${location.coordinates?.lon}&title=${encodeURIComponent(location.title)}&address=${encodeURIComponent(location.address)}`}
+                data-umami-event="view-map-clicked"
                 className="flex items-center gap-2 px-4 py-2 rounded-full text-white bg-blue-500 hover:bg-blue-600 transition-colors cursor-pointer"
             >
                 <DynamicIcon name="map-pin" size={16} />

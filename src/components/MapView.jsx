@@ -87,7 +87,6 @@ export default function MapView() {
   const { username } = useParams();
 
   useEffect(() => {
-    trackEvent('map-viewed', { viewingUser: username || qUsername || 'self' });
     // If we have a username either from params or query, get their favorites
     if (username || qUsername) {
       getFavoritesUserName(username || qUsername);
@@ -327,12 +326,13 @@ export default function MapView() {
   return (
     <div className="w-screen h-screen relative flex flex-col">
       <div className="w-full absolute top-4 z-[1000]  px-2 pt-2">
-        <div className="relative md:w-[calc(100vw-190px)] max-w-full mx-2">
+        <div data-section-id="map-search" className="relative md:w-[calc(100vw-190px)] max-w-full mx-2">
           <input
             type="text"
             value={searchQuery}
             onChange={handleSearchInput}
             placeholder="Search places..."
+            data-umami-event="map-search-input-focused"
             className="w-full pl-4 pr-12 py-3 rounded-xl bg-accent shadow-lg border border-gray-300 focus:outline-none focus:ring-2"
           />
           <DynamicIcon name="search" className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
@@ -347,6 +347,7 @@ export default function MapView() {
                   <button
                     key={index}
                     onClick={() => handleResultClick(result)}
+                    data-umami-event="map-search-result-clicked"
                     className="w-full p-3 flex items-center gap-3 hover:bg-background transition-colors border-b last:border-b-0 border-gray-300"
                   >
                     <DynamicIcon name="map-pin" size={16} className="flex-shrink-0" />
