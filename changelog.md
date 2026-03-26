@@ -1,5 +1,11 @@
 ## CHANGELOG
 
+0.5.0
+
+  Add advanced analytics tracking
+  Add AnalyticsProvider wrapper
+  Add localhost analytics guard
+
 0.3.3
 
   Update Dockerfile node:22-alpine
