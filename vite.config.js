@@ -90,9 +90,9 @@ const dynamicRobotsPlugin = () => {
         name: 'dynamic-robots',
         generateBundle() {
             const constants = JSON.parse(fs.readFileSync('src/constants.json', 'utf8'));
-            const website = constants.companyWebsite.startsWith('http')
-                ? constants.companyWebsite
-                : `https://${constants.companyWebsite}`;
+            const website = (constants.url || constants.companyWebsite).startsWith('http')
+                ? (constants.url || constants.companyWebsite)
+                : `https://${constants.url || constants.companyWebsite}`;
 
             const robotsContent = `User-agent: *
 Allow: /
@@ -151,9 +151,9 @@ const dynamicSitemapPlugin = () => {
         name: 'dynamic-sitemap',
         generateBundle() {
             const constants = JSON.parse(fs.readFileSync('src/constants.json', 'utf8'));
-            const website = constants.companyWebsite.startsWith('http')
-                ? constants.companyWebsite
-                : `https://${constants.companyWebsite}`;
+            const website = (constants.url || constants.companyWebsite).startsWith('http')
+                ? (constants.url || constants.companyWebsite)
+                : `https://${constants.url || constants.companyWebsite}`;
 
             const currentDate = new Date().toISOString().split('T')[0];
 
