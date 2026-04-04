@@ -35,3 +35,9 @@ deno run start    # Frontend :5173 + Backend :8000
 railway link -p bixby -e production -s bxfav
 railway up
 ```
+
+---
+
+<div align="center">
+  Made with <a href="https://github.com/stevederico/skateboard">Skateboard</a> — a React boilerplate with auth and payments
+</div>
