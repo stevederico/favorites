@@ -1,5 +1,11 @@
 ## CHANGELOG
 
+0.6.0
+
+  Bump skateboard 3.4.0
+  Drop unused deps
+  Migrate to react-router
+
 0.5.0
 
   Add advanced analytics tracking
