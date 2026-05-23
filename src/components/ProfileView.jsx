@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import DynamicIcon from '@stevederico/skateboard-ui/DynamicIcon';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router';
 import Header from '@stevederico/skateboard-ui/Header';
 import { useFavorites } from '../contexts/FavoritesContext';
 

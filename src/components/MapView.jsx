@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { useSearchParams, useParams } from 'react-router-dom';
+import { useSearchParams, useParams } from 'react-router';
 import DynamicIcon from '@stevederico/skateboard-ui/DynamicIcon';
 import { createRoot } from 'react-dom/client';
 import { getState } from '@stevederico/skateboard-ui/Context';

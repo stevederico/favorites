@@ -1,6 +1,6 @@
 // Import necessary React hooks and components
 import { useEffect, useState, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router';
 import { useFavorites } from '../contexts/FavoritesContext';
 import DynamicIcon from '@stevederico/skateboard-ui/DynamicIcon';
 import { getBackendURL, timestampToString } from '@stevederico/skateboard-ui/Utilities';
