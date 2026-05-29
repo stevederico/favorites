@@ -19,17 +19,17 @@
         "title": "Discover & Share",
         "items": [
             {
-                "icon": "❤️",
+                "icon": "heart",
                 "title": "Save Favorites",
                 "description": "Easily save and organize your favorite places, restaurants, and locations"
             },
             {
-                "icon": "🗺️",
+                "icon": "map",
                 "title": "Map View",
                 "description": "Visualize all your favorite spots on an interactive map"
             },
             {
-                "icon": "👥",
+                "icon": "users",
                 "title": "Share & Explore",
                 "description": "Share your favorites with friends and discover theirs"
             }
