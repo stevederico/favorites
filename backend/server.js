@@ -543,6 +543,7 @@ const db = {
   updateUser: (query, update) => databaseManager.updateUser(currentDbConfig.dbType, currentDbConfig.db, currentDbConfig.connectionString, query, update),
   findAuth: (query) => databaseManager.findAuth(currentDbConfig.dbType, currentDbConfig.db, currentDbConfig.connectionString, query),
   insertAuth: (authData) => databaseManager.insertAuth(currentDbConfig.dbType, currentDbConfig.db, currentDbConfig.connectionString, authData),
+  updateAuth: (query, update) => databaseManager.updateAuth(currentDbConfig.dbType, currentDbConfig.db, currentDbConfig.connectionString, query, update),
   findWebhookEvent: (eventId) => databaseManager.findWebhookEvent(currentDbConfig.dbType, currentDbConfig.db, currentDbConfig.connectionString, eventId),
   insertWebhookEvent: (eventId, eventType, processedAt) => databaseManager.insertWebhookEvent(currentDbConfig.dbType, currentDbConfig.db, currentDbConfig.connectionString, eventId, eventType, processedAt),
   executeQuery: (queryObject) => databaseManager.executeQuery(currentDbConfig.dbType, currentDbConfig.db, currentDbConfig.connectionString, queryObject)
@@ -1181,14 +1182,11 @@ app.post("/api/signin", async (c) => {
       return c.json({ error: "Invalid credentials" }, 401);
     }
 
-    // Lazy migrate legacy bcrypt hash to scrypt (best-effort, never blocks login).
-    // This project's db helper/adapters expose no updateAuth, so the rehash is
-    // performed via the provider-agnostic executeQuery path used elsewhere
-    // (e.g. signup rollback). Wrapped in try/catch so it can never block login.
+    // Lazy migrate legacy bcrypt hash to scrypt (best-effort, never blocks login)
     if (needsRehash(auth.password)) {
       try {
         const newHash = await hashPassword(password);
-        await db.executeQuery({ query: 'UPDATE Auths SET password = ? WHERE email = ?', params: [newHash, email] });
+        await db.updateAuth({ email }, { password: newHash });
         logger.debug('Password hash migrated to scrypt');
       } catch (e) {
         logger.warn('Password rehash failed', { error: e.message });

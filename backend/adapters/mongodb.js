@@ -209,6 +209,25 @@ export class MongoDBProvider {
   }
 
   /**
+   * Update authentication document (password only)
+   *
+   * @async
+   * @param {Db} db - MongoDB database instance
+   * @param {Object} query - Query object with email
+   * @param {string} query.email - Email of auth document to update
+   * @param {Object} update - Fields to update
+   * @param {string} update.password - New password hash
+   * @returns {Promise<{modifiedCount: number}>} Number of modified documents
+   */
+  async updateAuth(db, query, update) {
+    const { email } = query;
+    const { password } = update;
+    if (typeof password !== 'string') return { modifiedCount: 0 };
+    const result = await db.collection('Auths').updateOne({ email }, { $set: { password } });
+    return { modifiedCount: result.modifiedCount };
+  }
+
+  /**
    * Execute custom MongoDB operation with unified response format
    *
    * Supports 11 operations: findone, find, insertone, insertmany, updateone,
