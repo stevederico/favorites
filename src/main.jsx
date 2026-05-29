@@ -18,12 +18,15 @@
  */
 import './assets/styles.css';
 import { createSkateboardApp } from '@stevederico/skateboard-ui/App';
+import Layout from '@stevederico/skateboard-ui/Layout';
 import { FavoritesProvider } from './contexts/FavoritesContext';
 import AnalyticsProvider from './components/AnalyticsProvider.jsx';
+import CommandMenu from './components/CommandMenu.jsx';
 import constants from './constants.json';
 import HomeView from './components/HomeView.jsx';
 import MapView from './components/MapView.jsx';
 import ProfileView from './components/ProfileView.jsx';
+import LandingSpecSheet from './components/LandingSpecSheet.jsx';
 
 /**
  * Application route configuration
@@ -39,6 +42,23 @@ const appRoutes = [
   { path: 'map', element: <MapView /> },
   { path: 'map/:username', element: <MapView /> }
 ];
+
+/**
+ * App layout with global command menu overlay.
+ *
+ * Wraps the default skateboard-ui Layout and injects CommandMenu
+ * so the Cmd+K shortcut is available on all authenticated routes.
+ *
+ * @returns {JSX.Element} Layout with command menu
+ */
+function AppLayout() {
+  return (
+    <>
+      <CommandMenu />
+      <Layout />
+    </>
+  );
+}
 
 /**
  * Custom wrapper composing AnalyticsProvider and FavoritesProvider
@@ -74,5 +94,7 @@ createSkateboardApp({
   constants,
   appRoutes,
   defaultRoute: 'home',
-  wrapper: AppWrapper
+  landingPage: <LandingSpecSheet />,
+  wrapper: AppWrapper,
+  overrides: { layout: AppLayout }
 });
