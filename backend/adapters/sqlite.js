@@ -92,6 +92,15 @@ export class SQLiteProvider {
     // Create indexes
     db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON Users(email)`);
     db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_auths_email ON Auths(email)`);
+
+    // Create WebhookEvents table for idempotency
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS WebhookEvents (
+        event_id TEXT PRIMARY KEY,
+        event_type TEXT NOT NULL,
+        processed_at INTEGER NOT NULL
+      )
+    `);
   }
 
   /**
@@ -322,6 +331,35 @@ export class SQLiteProvider {
     const sql = "UPDATE Auths SET password = ? WHERE email = ?";
     const result = db.prepare(sql).run(password, email);
     return { modifiedCount: result.changes };
+  }
+
+  /**
+   * Find webhook event by event ID for idempotency check
+   *
+   * @async
+   * @param {Database} db - SQLite database instance
+   * @param {string} eventId - Stripe event ID
+   * @returns {Promise<Object|null>} Webhook event record or null if not found
+   */
+  async findWebhookEvent(db, eventId) {
+    const sql = "SELECT * FROM WebhookEvents WHERE event_id = ?";
+    return db.prepare(sql).get(eventId);
+  }
+
+  /**
+   * Insert webhook event record for idempotency tracking
+   *
+   * @async
+   * @param {Database} db - SQLite database instance
+   * @param {string} eventId - Stripe event ID (unique)
+   * @param {string} eventType - Stripe event type
+   * @param {number} processedAt - Unix timestamp
+   * @returns {Promise<{insertedId: string}>} Inserted event ID
+   */
+  async insertWebhookEvent(db, eventId, eventType, processedAt) {
+    const sql = "INSERT INTO WebhookEvents (event_id, event_type, processed_at) VALUES (?, ?, ?)";
+    db.prepare(sql).run(eventId, eventType, processedAt);
+    return { insertedId: eventId };
   }
 
   /**

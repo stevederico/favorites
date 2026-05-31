@@ -1,6 +1,4 @@
 import { SQLiteProvider } from './sqlite.js';
-import { PostgreSQLProvider } from './postgres.js';
-import { MongoDBProvider } from './mongodb.js';
 
 /**
  * Database manager implementing factory pattern for multi-database support
@@ -41,13 +39,17 @@ class DatabaseManager {
           provider = new SQLiteProvider();
           break;
         case 'postgresql':
-        case 'postgres':
+        case 'postgres': {
+          const { PostgreSQLProvider } = await import('./postgres.js');
           provider = new PostgreSQLProvider();
           break;
+        }
         case 'mongodb':
-        case 'mongo':
+        case 'mongo': {
+          const { MongoDBProvider } = await import('./mongodb.js');
           provider = new MongoDBProvider();
           break;
+        }
         default:
           throw new Error(`Unsupported database type: ${dbType}`);
       }
@@ -210,6 +212,46 @@ class DatabaseManager {
   }
 
   /**
+   * Find webhook event by event ID for idempotency check
+   *
+   * Checks if a Stripe webhook event has already been processed to prevent
+   * duplicate processing on retries.
+   *
+   * @async
+   * @param {string} dbType - Database type
+   * @param {string} dbName - Database name
+   * @param {string} connectionString - Connection string or file path
+   * @param {string} eventId - Stripe event ID to check
+   * @returns {Promise<Object|null>} Webhook event record or null if not processed
+   * @throws {Error} If database operation fails
+   */
+  async findWebhookEvent(dbType, dbName, connectionString, eventId) {
+    const { provider, database } = await this.getDatabase(dbType, dbName, connectionString);
+    return await provider.findWebhookEvent(database, eventId);
+  }
+
+  /**
+   * Insert webhook event record for idempotency tracking
+   *
+   * Records that a Stripe webhook event has been processed to prevent
+   * duplicate processing on retries.
+   *
+   * @async
+   * @param {string} dbType - Database type
+   * @param {string} dbName - Database name
+   * @param {string} connectionString - Connection string or file path
+   * @param {string} eventId - Stripe event ID (unique)
+   * @param {string} eventType - Stripe event type
+   * @param {number} processedAt - Unix timestamp when processed
+   * @returns {Promise<Object>} Inserted event record
+   * @throws {Error} If database operation fails
+   */
+  async insertWebhookEvent(dbType, dbName, connectionString, eventId, eventType, processedAt) {
+    const { provider, database } = await this.getDatabase(dbType, dbName, connectionString);
+    return await provider.insertWebhookEvent(database, eventId, eventType, processedAt);
+  }
+
+  /**
    * Execute custom query operation
    *
    * Generic query executor for provider-specific operations.
@@ -226,92 +268,6 @@ class DatabaseManager {
   async executeQuery(dbType, dbName, connectionString, queryObject) {
     const { provider, database } = await this.getDatabase(dbType, dbName, connectionString);
     return await provider.execute(database, queryObject);
-  }
-
-  /**
-   * Find documents in a collection
-   *
-   * @async
-   * @param {string} dbType - Database type
-   * @param {string} dbName - Database name
-   * @param {string} connectionString - Connection string or file path
-   * @param {string} collection - Collection name
-   * @param {Object} query - Query filter
-   * @returns {Promise<Array>} Array of matching documents
-   */
-  async find(dbType, dbName, connectionString, collection, query) {
-    const { provider, database } = await this.getDatabase(dbType, dbName, connectionString);
-    const result = await provider.execute(database, {
-      collection,
-      operation: 'find',
-      query
-    });
-    return result.data || [];
-  }
-
-  /**
-   * Find a single document in a collection
-   *
-   * @async
-   * @param {string} dbType - Database type
-   * @param {string} dbName - Database name
-   * @param {string} connectionString - Connection string or file path
-   * @param {string} collection - Collection name
-   * @param {Object} query - Query filter
-   * @returns {Promise<Object|null>} Matching document or null
-   */
-  async findOne(dbType, dbName, connectionString, collection, query) {
-    const { provider, database } = await this.getDatabase(dbType, dbName, connectionString);
-    const result = await provider.execute(database, {
-      collection,
-      operation: 'findone',
-      query
-    });
-    return result.data || null;
-  }
-
-  /**
-   * Insert a document into a collection
-   *
-   * @async
-   * @param {string} dbType - Database type
-   * @param {string} dbName - Database name
-   * @param {string} connectionString - Connection string or file path
-   * @param {string} collection - Collection name
-   * @param {Object} document - Document to insert
-   * @returns {Promise<Object>} Insert result with insertedId
-   */
-  async insert(dbType, dbName, connectionString, collection, document) {
-    const { provider, database } = await this.getDatabase(dbType, dbName, connectionString);
-    const result = await provider.execute(database, {
-      collection,
-      operation: 'insertone',
-      query: document
-    });
-    return result.data || {};
-  }
-
-  /**
-   * Update documents in a collection
-   *
-   * @async
-   * @param {string} dbType - Database type
-   * @param {string} dbName - Database name
-   * @param {string} connectionString - Connection string or file path
-   * @param {string} collection - Collection name
-   * @param {Object} query - Query filter
-   * @param {Object} update - Update operators
-   * @returns {Promise<Object>} Update result with modifiedCount
-   */
-  async update(dbType, dbName, connectionString, collection, query, update) {
-    const { provider, database } = await this.getDatabase(dbType, dbName, connectionString);
-    const result = await provider.execute(database, {
-      collection,
-      operation: 'updateone',
-      query,
-      update
-    });
-    return result.data || {};
   }
 
   /**
