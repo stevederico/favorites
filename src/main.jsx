@@ -26,7 +26,6 @@ import constants from './constants.json';
 import HomeView from './components/HomeView.jsx';
 import MapView from './components/MapView.jsx';
 import ProfileView from './components/ProfileView.jsx';
-import LandingSpecSheet from './components/LandingSpecSheet.jsx';
 
 /**
  * Application route configuration
@@ -94,7 +93,6 @@ createSkateboardApp({
   constants,
   appRoutes,
   defaultRoute: 'home',
-  landingPage: <LandingSpecSheet />,
   wrapper: AppWrapper,
   overrides: { layout: AppLayout }
 });
