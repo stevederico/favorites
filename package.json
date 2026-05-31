@@ -2,7 +2,7 @@
   "name": "BXFav-WIP",
   "private": false,
   "version": "0.6.0",
-  "skateboardVersion": "3.4.0",
+  "skateboardVersion": "3.5.0",
   "type": "module",
   "workspaces": [
     "backend"
