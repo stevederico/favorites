@@ -87,14 +87,14 @@ export default function MapView() {
   const { username } = useParams();
 
   useEffect(() => {
-    // If we have a username either from params or query, get their favorites
     if (username || qUsername) {
       getFavoritesUserName(username || qUsername);
-    } else {
-      // Otherwise get the current user's favorites
+      return;
+    }
+    if (state.user) {
       getFavorites();
     }
-  }, [username, qUsername]);
+  }, [username, qUsername, state.user]);
 
 
 

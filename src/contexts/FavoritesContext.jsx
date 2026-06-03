@@ -5,20 +5,29 @@ import { trackEvent } from '../utils/analytics';
 
 export const FavoritesContext = createContext();
 
+/**
+ * Resolve Mongo/user id from skateboard context (sign-in uses `id`, /me uses `_id`).
+ *
+ * @param {Object|null|undefined} user - Authenticated user from Context
+ * @returns {string|null} User id string or null when not signed in
+ */
+export function resolveFavoriteUserId(user) {
+  if (!user) return null;
+  const id = user.id ?? user._id;
+  if (id == null || id === '') return null;
+  return String(id);
+}
+
 export function FavoritesProvider({ children }) {
   const [favorites, setFavorites] = useState([]);
   const { state } = getState();
 
   async function getFavorites(userID) {
-    let id = state.user._id
-    console.log("getFavorites state.user._id", id)
-    if (userID){
-      id = userID
-      console.log("getFavorites id override", id)
-    }
-    if (typeof id == "undefined"){
-      console.log("getFavs id undefined")
-      return
+    const id = userID != null && userID !== ''
+      ? String(userID)
+      : resolveFavoriteUserId(state.user);
+    if (!id) {
+      return [];
     }
 
     try {

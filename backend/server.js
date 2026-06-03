@@ -591,9 +591,9 @@ app.use('*', secureHeaders({
     defaultSrc: ["'self'"],
     scriptSrc: ["'self'", "'unsafe-inline'", "https://aob.bixbyapps.com", "https://static.cloudflareinsights.com"],
     styleSrc: ["'self'", "'unsafe-inline'"],
-    imgSrc: ["'self'", "https:"],
+    imgSrc: ["'self'", "https:", "data:", "blob:"],
     fontSrc: ["'self'"],
-    connectSrc: ["'self'", "https://aob.bixbyapps.com"],
+    connectSrc: ["'self'", "https://aob.bixbyapps.com", "https://nominatim.openstreetmap.org"],
     frameAncestors: ["'none'"]
   },
   strictTransportSecurity: !isProd() ? false : 'max-age=31536000; includeSubDomains; preload',
