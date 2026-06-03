@@ -7,7 +7,7 @@ import { secureHeaders } from 'hono/secure-headers'
 import { cors } from 'hono/cors'
 import Stripe from "stripe";
 import { compare as legacyBcryptCompare } from "./vendor/legacy-bcrypt.js";
-import crypto from "node:crypto";
+import crypto from "crypto";
 
 import { databaseManager } from "./adapters/manager.js";
 import { dirname, resolve } from 'node:path';
@@ -71,8 +71,8 @@ const CSRF_MAX_ENTRIES = 50000; // LRU eviction threshold
 /**
  * LRU eviction helper that removes oldest entries when over limit
  *
- * Prevents memory leaks in rate limiter and CSRF stores by removing oldest
- * entries based on timestamp when store exceeds maxEntries threshold.
+ * Prevents memory leaks in CSRF store by removing oldest entries based on
+ * timestamp when store exceeds maxEntries threshold.
  *
  * @param {Map} store - Map to evict entries from
  * @param {number} maxEntries - Maximum entries before eviction
@@ -200,117 +200,6 @@ setInterval(() => {
     logger.debug('CSRF cleanup completed', { removedTokens: cleaned });
   }
 }, 60 * 60 * 1000); // Run every hour
-
-// ==== RATE LIMITING ====
-const rateLimitStore = new Map(); // key -> { count, resetAt }
-const RATE_LIMIT_WINDOW = 15 * 60 * 1000; // 15 minutes
-const RATE_LIMIT_MAX_ENTRIES = 100000; // LRU eviction threshold
-
-// Route-specific rate limits
-const RATE_LIMITS = {
-  auth: { limit: 10, window: RATE_LIMIT_WINDOW },       // /api/signin, /api/signup
-  payment: { limit: 5, window: RATE_LIMIT_WINDOW },     // /api/checkout, /api/portal
-  global: { limit: 300, window: RATE_LIMIT_WINDOW }     // all other /api routes
-};
-
-/**
- * Get client IP address from request
- *
- * Checks X-Forwarded-For header first (for proxies), falls back to
- * socket address. Handles comma-separated forwarded IPs.
- *
- * @param {Context} c - Hono context
- * @returns {string} Client IP address
- */
-function getClientIP(c) {
-  const forwarded = c.req.header('x-forwarded-for');
-  if (forwarded) {
-    return forwarded.split(',')[0].trim();
-  }
-  return c.req.raw?.socket?.remoteAddress || 'unknown';
-}
-
-/**
- * Get rate limit category for a given path
- *
- * @param {string} path - Request path
- * @returns {string} Rate limit category: 'auth', 'payment', or 'global'
- */
-function getRateLimitCategory(path) {
-  if (path === '/api/signin' || path === '/api/signup') {
-    return 'auth';
-  }
-  if (path === '/api/checkout' || path === '/api/portal') {
-    return 'payment';
-  }
-  return 'global';
-}
-
-/**
- * Rate limiting middleware
- *
- * Tracks requests per IP+category with sliding window. Returns 429 when
- * limit exceeded. Adds X-RateLimit-Remaining and Retry-After headers.
- *
- * @async
- * @param {Context} c - Hono context
- * @param {Function} next - Next middleware function
- * @returns {Promise<Response|void>} 429 error or continues to next middleware
- */
-async function rateLimitMiddleware(c, next) {
-  // Skip rate limiting for health check and static files
-  if (c.req.path === '/api/health' || !c.req.path.startsWith('/api/')) {
-    return next();
-  }
-
-  const ip = getClientIP(c);
-  const category = getRateLimitCategory(c.req.path);
-  const { limit, window } = RATE_LIMITS[category];
-  const key = `${ip}:${category}`;
-  const now = Date.now();
-
-  let record = rateLimitStore.get(key);
-
-  // Reset if window expired
-  if (!record || now > record.resetAt) {
-    record = { count: 0, resetAt: now + window };
-    rateLimitStore.set(key, record);
-  }
-
-  record.count++;
-
-  // Check if over limit
-  if (record.count > limit) {
-    const retryAfter = Math.ceil((record.resetAt - now) / 1000);
-    c.header('Retry-After', String(retryAfter));
-    c.header('X-RateLimit-Remaining', '0');
-    logger.info('Rate limit exceeded', { ip, category, path: c.req.path });
-    return c.json({ error: 'Too many requests' }, 429);
-  }
-
-  c.header('X-RateLimit-Remaining', String(limit - record.count));
-  await next();
-}
-
-// Cleanup expired rate limit entries every 15 minutes
-setInterval(() => {
-  const now = Date.now();
-  let cleaned = 0;
-
-  for (const [key, record] of rateLimitStore.entries()) {
-    if (now > record.resetAt) {
-      rateLimitStore.delete(key);
-      cleaned++;
-    }
-  }
-
-  // LRU eviction if still over limit
-  evictOldestEntries(rateLimitStore, RATE_LIMIT_MAX_ENTRIES, (data) => data.resetAt);
-
-  if (cleaned > 0) {
-    logger.debug('Rate limit cleanup completed', { removedEntries: cleaned });
-  }
-}, 15 * 60 * 1000);
 
 // ==== ACCOUNT LOCKOUT ====
 const loginAttemptStore = new Map(); // email -> { attempts, lockedUntil }
@@ -536,6 +425,11 @@ const currentDbConfig = dbConfig;
  * dbType, db, connectionString on every call.
  *
  * @type {Object}
+ * @example
+ * // Instead of:
+ * await db.findUser( { email });
+ * // Use:
+ * await db.findUser({ email });
  */
 const db = {
   findUser: (query, projection) => databaseManager.findUser(currentDbConfig.dbType, currentDbConfig.db, currentDbConfig.connectionString, query, projection),
@@ -569,9 +463,6 @@ app.use('*', cors({
   credentials: true
 }));
 
-// Rate limiting middleware
-app.use('*', rateLimitMiddleware);
-
 // Apache Common Log Format middleware
 app.use('*', async (c, next) => {
   const start = Date.now();
@@ -585,15 +476,15 @@ app.use('*', async (c, next) => {
   console.log(`[${timestamp}] "${method} ${url}" ${status} (${duration}ms)`);
 });
 
-// Security headers middleware (BXFav CSP: Umami analytics)
+// Security headers middleware
 app.use('*', secureHeaders({
   contentSecurityPolicy: {
     defaultSrc: ["'self'"],
-    scriptSrc: ["'self'", "'unsafe-inline'", "https://aob.bixbyapps.com", "https://static.cloudflareinsights.com"],
+    scriptSrc: ["'self'", "'unsafe-inline'"],
     styleSrc: ["'self'", "'unsafe-inline'"],
-    imgSrc: ["'self'", "https:", "data:", "blob:"],
+    imgSrc: ["'self'", "https:"],
     fontSrc: ["'self'"],
-    connectSrc: ["'self'", "https://aob.bixbyapps.com", "https://nominatim.openstreetmap.org"],
+    connectSrc: ["'self'"],
     frameAncestors: ["'none'"]
   },
   strictTransportSecurity: !isProd() ? false : 'max-age=31536000; includeSubDomains; preload',
@@ -923,6 +814,56 @@ function setAuthCookies(c, userID, jwtToken) {
 }
 
 // ==== STRIPE WEBHOOK (raw body needed) ====
+
+/**
+ * Resolve a Stripe customer ID to a normalized lowercase email.
+ *
+ * @param {string} stripeID - Stripe customer ID
+ * @returns {Promise<string|null>} Normalized email, or null if missing
+ */
+async function resolveCustomerEmail(stripeID) {
+  const customer = await stripe.customers.retrieve(stripeID);
+  if (!customer?.email) {
+    logger.warn('Webhook: Customer has no email', { stripeID });
+    return null;
+  }
+  return customer.email.toLowerCase();
+}
+
+/**
+ * Build the canonical user.subscription patch from a Stripe customer ID
+ * and a Stripe subscription object.
+ *
+ * @param {string} stripeID - Stripe customer ID
+ * @param {object} stripeSub - Stripe subscription object
+ * @returns {{stripeID: string, expires: number, status: string}}
+ */
+function buildSubscriptionPatch(stripeID, stripeSub) {
+  return {
+    stripeID,
+    expires: stripeSub.current_period_end,
+    status: stripeSub.status
+  };
+}
+
+/**
+ * Apply a $set patch to the user identified by email. Returns false if no
+ * matching user is found (silent no-op so Stripe will not retry).
+ *
+ * @param {string} email - Normalized email
+ * @param {object} $set - MongoDB-style $set fields
+ * @returns {Promise<boolean>} True if a user was patched
+ */
+async function applyUserPatch(email, $set) {
+  const user = await db.findUser({ email });
+  if (!user) {
+    logger.warn('Webhook: No user found for email', { email });
+    return false;
+  }
+  await db.updateUser({ email }, { $set });
+  return true;
+}
+
 app.post("/api/payment", async (c) => {
   logger.info('Payment webhook received');
 
@@ -952,85 +893,56 @@ app.post("/api/payment", async (c) => {
 
     const eventObject = event.data.object;
 
-    // Handle subscription lifecycle events
     if (["customer.subscription.deleted", "customer.subscription.updated", "customer.subscription.created"].includes(event.type)) {
       const { customer: stripeID, current_period_end, status } = eventObject;
       if (!stripeID) {
         logger.error('Webhook missing customer ID', { type: event.type });
         return c.body(null, 400);
       }
-
-      const customer = await stripe.customers.retrieve(stripeID);
-      if (!customer || !customer.email) {
-        logger.error('Webhook: Customer has no email', { stripeID });
-        return c.body(null, 400);
-      }
-
-      const customerEmail = customer.email.toLowerCase();
-      const user = await db.findUser({ email: customerEmail });
-      if (user) {
-        await db.updateUser({ email: customerEmail }, {
-          $set: { subscription: { stripeID, expires: current_period_end, status } }
-        });
-        logger.info('Subscription updated', { type: event.type, email: customerEmail, status });
-      } else {
-        logger.warn('Webhook: No user found for email', { email: customerEmail });
-      }
+      const email = await resolveCustomerEmail(stripeID);
+      if (!email) return c.body(null, 400);
+      const ok = await applyUserPatch(email, { subscription: { stripeID, expires: current_period_end, status } });
+      if (ok) logger.info('Subscription updated', { type: event.type, email, status });
     }
 
-    // Handle checkout session completed (initial subscription)
     if (event.type === "checkout.session.completed") {
       const { customer: stripeID, customer_email, subscription: subscriptionId } = eventObject;
       if (subscriptionId && stripeID) {
-        const subscriptionPromise = stripe.subscriptions.retrieve(subscriptionId);
-        const customerPromise = !customer_email ? stripe.customers.retrieve(stripeID) : null;
-        const [subscription, fetchedCustomer] = await Promise.all([subscriptionPromise, customerPromise]);
-        const customerEmail = (customer_email || fetchedCustomer.email).toLowerCase();
-        const user = await db.findUser({ email: customerEmail });
-        if (user) {
-          await db.updateUser({ email: customerEmail }, {
-            $set: { subscription: { stripeID, expires: subscription.current_period_end, status: subscription.status } }
-          });
-          logger.info('Checkout completed', { email: customerEmail, status: subscription.status });
+        const [subscription, email] = await Promise.all([
+          stripe.subscriptions.retrieve(subscriptionId),
+          customer_email ? Promise.resolve(customer_email.toLowerCase()) : resolveCustomerEmail(stripeID)
+        ]);
+        if (email) {
+          const ok = await applyUserPatch(email, { subscription: buildSubscriptionPatch(stripeID, subscription) });
+          if (ok) logger.info('Checkout completed', { email, status: subscription.status });
         }
       }
     }
 
-    // Handle invoice paid (recurring payment success)
     if (event.type === "invoice.paid") {
       const { customer: stripeID, subscription: subscriptionId } = eventObject;
       if (subscriptionId && stripeID) {
-        const [subscription, customer] = await Promise.all([
+        const [subscription, email] = await Promise.all([
           stripe.subscriptions.retrieve(subscriptionId),
-          stripe.customers.retrieve(stripeID)
+          resolveCustomerEmail(stripeID)
         ]);
-        if (customer?.email) {
-          const customerEmail = customer.email.toLowerCase();
-          const user = await db.findUser({ email: customerEmail });
-          if (user) {
-            await db.updateUser({ email: customerEmail }, {
-              $set: { subscription: { stripeID, expires: subscription.current_period_end, status: subscription.status } }
-            });
-            logger.info('Invoice paid', { email: customerEmail });
-          }
+        if (email) {
+          const ok = await applyUserPatch(email, { subscription: buildSubscriptionPatch(stripeID, subscription) });
+          if (ok) logger.info('Invoice paid', { email });
         }
       }
     }
 
-    // Handle invoice payment failed
     if (event.type === "invoice.payment_failed") {
       const { customer: stripeID } = eventObject;
       if (stripeID) {
-        const customer = await stripe.customers.retrieve(stripeID);
-        if (customer?.email) {
-          const customerEmail = customer.email.toLowerCase();
-          const user = await db.findUser({ email: customerEmail });
-          if (user) {
-            await db.updateUser({ email: customerEmail }, {
-              $set: { 'subscription.paymentFailed': true, 'subscription.paymentFailedAt': Date.now() }
-            });
-            logger.warn('Invoice payment failed', { email: customerEmail });
-          }
+        const email = await resolveCustomerEmail(stripeID);
+        if (email) {
+          const ok = await applyUserPatch(email, {
+            'subscription.paymentFailed': true,
+            'subscription.paymentFailedAt': Date.now()
+          });
+          if (ok) logger.warn('Invoice payment failed', { email });
         }
       }
     }
@@ -1410,206 +1322,6 @@ app.post("/api/usage", authMiddleware, async (c) => {
   }
 });
 
-// ==== FAVORITES ROUTES ====
-
-/**
- * GET /api/favorites - Get favorites for a user
- *
- * Supports ?uid=<userID> or ?username=<name> query params.
- * Returns array of favorite objects excluding soft-deleted ones.
- * Uses databaseManager.find (non-standard adapter method).
- *
- * @param {string} [uid] - User ID to fetch favorites for
- * @param {string} [username] - Username to look up and fetch favorites for
- * @returns {Array} Array of favorite objects
- */
-app.get("/api/favorites", async (c) => {
-  try {
-    const uid = c.req.query('uid');
-    const username = c.req.query('username');
-
-    let query = {};
-    if (uid) {
-      query = { userID: uid, deleted: { $ne: true } };
-    } else if (username) {
-      // Find user by name first
-      const user = await db.findUser({
-        name: { $regex: new RegExp(`^${username}$`, 'i') }
-      });
-      if (!user) {
-        return c.json([]);
-      }
-      query = { userID: user._id.toString(), deleted: { $ne: true } };
-    } else {
-      return c.json({ error: "Missing uid or username parameter" }, 400);
-    }
-
-    const favorites = await databaseManager.find(currentDbConfig.dbType, currentDbConfig.db, currentDbConfig.connectionString, 'favorites', query);
-    return c.json(favorites || []);
-  } catch (e) {
-    logger.error('Get favorites error', { error: e.message });
-    return c.json({ error: "Failed to get favorites" }, 500);
-  }
-});
-
-/**
- * GET /api/profiles - List all user profiles (public info only)
- *
- * Returns array of { _id, name } objects for all users.
- * Uses databaseManager.find (non-standard adapter method).
- *
- * @returns {Array} Array of profile objects with _id and name
- */
-app.get("/api/profiles", async (c) => {
-  try {
-    const users = await databaseManager.find(currentDbConfig.dbType, currentDbConfig.db, currentDbConfig.connectionString, 'users', {});
-    // Return only public profile info
-    const profiles = (users || []).map(user => ({
-      _id: user._id,
-      name: user.name
-    }));
-    return c.json(profiles);
-  } catch (e) {
-    logger.error('Get profiles error', { error: e.message });
-    return c.json({ error: "Failed to get profiles" }, 500);
-  }
-});
-
-/**
- * POST /api/favorites - Create a new favorite
- *
- * Creates a favorite with title, address, coordinates, notes, placeID, details.
- * Uses databaseManager.insert (non-standard adapter method).
- *
- * @param {Object} body - Favorite data (title, address, coordinates, notes, placeID, details)
- * @returns {Object} Created favorite with generated _id
- */
-app.post("/api/favorites", authMiddleware, csrfProtection, async (c) => {
-  try {
-    const userID = c.get('userID');
-    const body = await c.req.json();
-    const { title, address, coordinates, notes, placeID, details } = body;
-
-    if (!title || !coordinates) {
-      return c.json({ error: "Missing required fields (title, coordinates)" }, 400);
-    }
-
-    const favorite = {
-      _id: generateUUID(),
-      userID: userID,
-      title: escapeHtml(title),
-      address: address ? escapeHtml(address) : '',
-      coordinates: {
-        lat: parseFloat(coordinates.lat),
-        lon: parseFloat(coordinates.lon)
-      },
-      notes: notes ? escapeHtml(notes) : '',
-      placeID: placeID || null,
-      details: details || null,
-      created_at: Date.now(),
-      deleted: false
-    };
-
-    await databaseManager.insert(currentDbConfig.dbType, currentDbConfig.db, currentDbConfig.connectionString, 'favorites', favorite);
-    logger.info('Favorite created');
-    return c.json(favorite, 201);
-  } catch (e) {
-    logger.error('Create favorite error', { error: e.message });
-    return c.json({ error: "Failed to create favorite" }, 500);
-  }
-});
-
-/**
- * PUT /api/favorites - Update a favorite
- *
- * Updates notes, placeID, coordinates, details on an existing favorite.
- * Verifies ownership before updating. Uses databaseManager.findOne and
- * databaseManager.update (non-standard adapter methods).
- *
- * @param {Object} body - Update data with _id and fields to update
- * @returns {Object} Updated favorite object
- */
-app.put("/api/favorites", authMiddleware, csrfProtection, async (c) => {
-  try {
-    const userID = c.get('userID');
-    const body = await c.req.json();
-    const { _id, notes, placeID, coordinates, details } = body;
-
-    if (!_id) {
-      return c.json({ error: "Missing favorite _id" }, 400);
-    }
-
-    // Find the favorite and verify ownership
-    const existing = await databaseManager.findOne(currentDbConfig.dbType, currentDbConfig.db, currentDbConfig.connectionString, 'favorites', { _id });
-    if (!existing) {
-      return c.json({ error: "Favorite not found" }, 404);
-    }
-    if (existing.userID !== userID) {
-      return c.json({ error: "Unauthorized" }, 403);
-    }
-
-    // Build update object with only allowed fields
-    const update = {};
-    if (notes !== undefined) update.notes = escapeHtml(notes);
-    if (placeID !== undefined) update.placeID = placeID;
-    if (coordinates !== undefined) {
-      update.coordinates = {
-        lat: parseFloat(coordinates.lat),
-        lon: parseFloat(coordinates.lon)
-      };
-    }
-    if (details !== undefined) update.details = details;
-
-    await databaseManager.update(currentDbConfig.dbType, currentDbConfig.db, currentDbConfig.connectionString, 'favorites', { _id }, { $set: update });
-
-    const updated = await databaseManager.findOne(currentDbConfig.dbType, currentDbConfig.db, currentDbConfig.connectionString, 'favorites', { _id });
-    logger.info('Favorite updated');
-    return c.json(updated);
-  } catch (e) {
-    logger.error('Update favorite error', { error: e.message });
-    return c.json({ error: "Failed to update favorite" }, 500);
-  }
-});
-
-/**
- * DELETE /api/favorites - Soft delete a favorite
- *
- * Marks a favorite as deleted by setting deleted: true.
- * Verifies ownership before deleting. Uses databaseManager.findOne and
- * databaseManager.update (non-standard adapter methods).
- *
- * @param {Object} body - Object with _id of favorite to delete
- * @returns {Object} Success indicator
- */
-app.delete("/api/favorites", authMiddleware, csrfProtection, async (c) => {
-  try {
-    const userID = c.get('userID');
-    const body = await c.req.json();
-    const { _id } = body;
-
-    if (!_id) {
-      return c.json({ error: "Missing favorite _id" }, 400);
-    }
-
-    // Find the favorite and verify ownership
-    const existing = await databaseManager.findOne(currentDbConfig.dbType, currentDbConfig.db, currentDbConfig.connectionString, 'favorites', { _id });
-    if (!existing) {
-      return c.json({ error: "Favorite not found" }, 404);
-    }
-    if (existing.userID !== userID) {
-      return c.json({ error: "Unauthorized" }, 403);
-    }
-
-    // Soft delete
-    await databaseManager.update(currentDbConfig.dbType, currentDbConfig.db, currentDbConfig.connectionString, 'favorites', { _id }, { $set: { deleted: true } });
-    logger.info('Favorite deleted');
-    return c.json({ success: true });
-  } catch (e) {
-    logger.error('Delete favorite error', { error: e.message });
-    return c.json({ error: "Failed to delete favorite" }, 500);
-  }
-});
-
 // ==== PAYMENT ROUTES ====
 app.post("/api/checkout", authMiddleware, csrfProtection, async (c) => {
   try {
@@ -1677,28 +1389,16 @@ app.post("/api/portal", authMiddleware, csrfProtection, async (c) => {
 });
 
 // ==== STATIC FILE SERVING (Production) ====
-// All /api/* routes are handled above. Everything else is static/SPA.
 const staticDir = resolve(__dirname, config.staticDir);
 
-// Serve static assets - skip /api/* paths
-app.use('*', async (c, next) => {
-  // Skip API routes - they're handled by route handlers above
-  if (c.req.path.startsWith('/api/')) {
-    return next();
-  }
+// Serve static files
+app.use('/*', serveStatic({ root: staticDir }));
 
-  // Try to serve static file
-  const staticMiddleware = serveStatic({ root: config.staticDir });
-  return staticMiddleware(c, next);
-});
-
-// SPA fallback - serve index.html for client-side routing
+// SPA fallback — only for non-asset routes
 app.get('*', async (c) => {
-  // Skip API routes
-  if (c.req.path.startsWith('/api/')) {
-    return c.json({ error: 'Not found' }, 404);
+  if (c.req.path.startsWith('/api/') || c.req.path.match(/\.\w+$/)) {
+    return c.notFound();
   }
-
   try {
     const indexPath = resolve(staticDir, 'index.html');
     const file = await promisify(readFile)(indexPath);
