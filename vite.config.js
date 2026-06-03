@@ -50,10 +50,10 @@ const htmlReplacePlugin = () => {
  * Dynamic robots.txt generation plugin
  *
  * Generates robots.txt at build time with:
- * - Default allow for all bots
- * - Explicit allow for AI search bots (GPTBot, ChatGPT-User, PerplexityBot, ClaudeBot, anthropic-ai, Google-Extended)
- * - Block training-only crawlers (CCBot)
+ * - Bot-specific rules (Googlebot, Bingbot, Applebot, social crawlers)
+ * - Protected routes (/app/, /console/, /signin/, /signup/)
  * - Sitemap reference from constants.json
+ * - Disallows all other bots from entire site
  *
  * @returns {import('vite').Plugin} Vite plugin object
  */
@@ -62,9 +62,9 @@ const dynamicRobotsPlugin = () => {
         name: 'dynamic-robots',
         generateBundle() {
             const constants = JSON.parse(fs.readFileSync('src/constants.json', 'utf8'));
-            const website = (constants.url || constants.companyWebsite).startsWith('http')
-                ? (constants.url || constants.companyWebsite)
-                : `https://${constants.url || constants.companyWebsite}`;
+            const website = constants.companyWebsite.startsWith('http')
+                ? constants.companyWebsite
+                : `https://${constants.companyWebsite}`;
 
             const robotsContent = `User-agent: *
 Allow: /
@@ -123,9 +123,9 @@ const dynamicSitemapPlugin = () => {
         name: 'dynamic-sitemap',
         generateBundle() {
             const constants = JSON.parse(fs.readFileSync('src/constants.json', 'utf8'));
-            const website = (constants.url || constants.companyWebsite).startsWith('http')
-                ? (constants.url || constants.companyWebsite)
-                : `https://${constants.url || constants.companyWebsite}`;
+            const website = constants.companyWebsite.startsWith('http')
+                ? constants.companyWebsite
+                : `https://${constants.companyWebsite}`;
 
             const currentDate = new Date().toISOString().split('T')[0];
 
@@ -234,7 +234,7 @@ export default defineConfig({
     drop: []
   },
   resolve: {
-    dedupe: ['react', 'react-dom'],
+    dedupe: ['react', 'react-dom', 'react-router-dom', 'react-router'],
     alias: {
       '@': path.resolve(process.cwd(), './src'),
       '@package': path.resolve(process.cwd(), 'package.json'),
@@ -290,8 +290,10 @@ export default defineConfig({
     open: false,
     port: 5173,
     strictPort: false,
+    // Don't pin the HMR port — Vite derives it from the resolved server port.
+    // Hardcoding 5173 broke HMR ("WebSocket closed without opened") whenever
+    // 5173 was taken and the server fell back to 5174 while HMR still dialed 5173.
     hmr: {
-      port: 5173,
       overlay: false
     },
     watch: {
