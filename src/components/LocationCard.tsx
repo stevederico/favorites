@@ -1,8 +1,17 @@
 import { Link } from 'react-router';
 import DynamicIcon from '@stevederico/skateboard-ui/DynamicIcon';
 import { useFavorites } from '../contexts/FavoritesContext';
+import type { Favorite } from '../contexts/FavoritesContext';
 
-export default function LocationCard({ location, showRemove = true }) {
+/** Props for LocationCard. */
+interface LocationCardProps {
+  /** The location/favorite to display */
+  location: Favorite;
+  /** Whether to show the add/remove favorite action */
+  showRemove?: boolean;
+}
+
+export default function LocationCard({ location, showRemove = true }: LocationCardProps) {
   const { favorites, removeFavorite, addFavorite } = useFavorites();
 
   const isInFavorites = () => {
@@ -27,7 +36,7 @@ return (
                                 fav.coordinates?.lat === location.coordinates?.lat &&
                                 fav.coordinates?.lon === location.coordinates?.lon
                             );
-                            if (existingFav) removeFavorite(existingFav._id);
+                            if (existingFav?._id) removeFavorite(existingFav._id);
                         }}
                         data-umami-event="remove-favorite-clicked"
                         className="flex items-center gap-2 px-4 py-2 rounded-full text-red-500 border border-red-500 hover:bg-red-600 transition-colors cursor-pointer"
@@ -47,7 +56,7 @@ return (
                 )
             ) : null}
             <Link
-                to={`/app/map?lat=${location.coordinates?.lat}&lon=${location.coordinates?.lon}&title=${encodeURIComponent(location.title)}&address=${encodeURIComponent(location.address)}`}
+                to={`/app/map?lat=${location.coordinates?.lat}&lon=${location.coordinates?.lon}&title=${encodeURIComponent(location.title)}&address=${encodeURIComponent(location.address as string)}`}
                 data-umami-event="view-map-clicked"
                 className="flex items-center gap-2 px-4 py-2 rounded-full text-white bg-blue-500 hover:bg-blue-600 transition-colors cursor-pointer"
             >
