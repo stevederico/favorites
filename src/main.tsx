@@ -17,25 +17,25 @@
  * @see {@link https://github.com/stevederico/skateboard|Skateboard Docs}
  */
 import './assets/styles.css';
+import type { ReactNode } from 'react';
 import { createSkateboardApp } from '@stevederico/skateboard-ui/App';
+import type { AppRoute } from '@stevederico/skateboard-ui/App';
 import Layout from '@stevederico/skateboard-ui/Layout';
 import { FavoritesProvider } from './contexts/FavoritesContext';
-import AnalyticsProvider from './components/AnalyticsProvider.jsx';
-import CommandMenu from './components/CommandMenu.jsx';
+import AnalyticsProvider from './components/AnalyticsProvider';
+import CommandMenu from './components/CommandMenu';
 import constants from './constants.json';
-import HomeView from './components/HomeView.jsx';
-import MapView from './components/MapView.jsx';
-import ProfileView from './components/ProfileView.jsx';
+import HomeView from './components/HomeView';
+import MapView from './components/MapView';
+import ProfileView from './components/ProfileView';
 
 /**
  * Application route configuration
  *
  * Maps route paths to view components. Routes are relative to root (no leading slash).
  * The shell handles route registration, navigation, and layout.
- *
- * @type {Array<{path: string, element: JSX.Element}>}
  */
-const appRoutes = [
+const appRoutes: AppRoute[] = [
   { path: ':username', element: <ProfileView /> },
   { path: 'home', element: <HomeView /> },
   { path: 'map', element: <MapView /> },
@@ -48,7 +48,7 @@ const appRoutes = [
  * Wraps the default skateboard-ui Layout and injects CommandMenu
  * so the Cmd+K shortcut is available on all authenticated routes.
  *
- * @returns {JSX.Element} Layout with command menu
+ * @returns Layout with command menu
  */
 function AppLayout() {
   return (
@@ -59,15 +59,21 @@ function AppLayout() {
   );
 }
 
+/** Props for the AppWrapper provider composition. */
+interface AppWrapperProps {
+  /** Child components (Router + App) */
+  children?: ReactNode;
+}
+
 /**
  * Custom wrapper composing AnalyticsProvider and FavoritesProvider
  * AnalyticsProvider handles page views, user identification, and passive tracking.
  * FavoritesProvider provides favorites context to all routes.
  *
- * @param {Object} props
- * @param {React.ReactNode} props.children - Child components (Router + App)
+ * @param props - Wrapper props
+ * @param props.children - Child components (Router + App)
  */
-const AppWrapper = ({ children }) => (
+const AppWrapper = ({ children }: AppWrapperProps) => (
   <AnalyticsProvider>
     <FavoritesProvider>{children}</FavoritesProvider>
   </AnalyticsProvider>

@@ -2,7 +2,17 @@ import { useEffect } from 'react';
 import { useLocation } from 'react-router';
 import constants from '../constants.json';
 
-const MetaTags = ({ title, description, image }) => {
+/** Props for the MetaTags document-head updater. */
+interface MetaTagsProps {
+  /** Page title (falls back to constants.appName) */
+  title?: string;
+  /** Meta description (falls back to constants.tagline) */
+  description?: string;
+  /** Open Graph / Twitter image URL */
+  image?: string;
+}
+
+const MetaTags = ({ title, description, image }: MetaTagsProps) => {
   const location = useLocation();
   const baseUrl = window.location.origin;
   const currentUrl = baseUrl + location.pathname;
