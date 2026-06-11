@@ -1,10 +1,19 @@
 // Import necessary React hooks and components
 import { useEffect, useState, useCallback } from 'react';
+import type { ChangeEvent } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { useFavorites } from '../contexts/FavoritesContext';
+import type { SearchResult } from '../contexts/FavoritesContext';
 import DynamicIcon from '@stevederico/skateboard-ui/DynamicIcon';
 import { getBackendURL, timestampToString } from '@stevederico/skateboard-ui/Utilities';
 import { getState } from '@stevederico/skateboard-ui/Context';
+
+/** A user profile returned by the /profiles endpoint. */
+interface Profile {
+  _id: string;
+  name: string;
+  [key: string]: unknown;
+}
 
 /**
  * HomeView Component
@@ -16,9 +25,9 @@ export default function HomeView() {
 
   // Local state management
   const [searchQuery, setSearchQuery] = useState(''); // Current search input
-  const [searchResults, setSearchResults] = useState([]); // Search result locations
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]); // Search result locations
   const [isSearching, setIsSearching] = useState(false); // Loading state for search
-  const [profiles, setProfiles] = useState([]); // List of all user profiles
+  const [profiles, setProfiles] = useState<Profile[]>([]); // List of all user profiles
   const { state } = getState();
 
   // Navigation and routing
@@ -27,9 +36,9 @@ export default function HomeView() {
   /**
    * Debounced search function to query OpenStreetMap
    * Prevents excessive API calls during typing
-   * @param {string} query - The search query string
+   * @param query - The search query string
    */
-  const debouncedSearch = useCallback(async (query) => {
+  const debouncedSearch = useCallback(async (query: string) => {
     if (!query.trim()) {
       setSearchResults([]);
       return;
@@ -46,7 +55,7 @@ export default function HomeView() {
   }, []);
 
   // Using imported isInFavorites instead of local implementation
-  const checkFavorite = useCallback((result) => {
+  const checkFavorite = useCallback((result: SearchResult) => {
     return isInFavorites(result, favorites);
   }, [favorites]);
 
@@ -91,9 +100,9 @@ export default function HomeView() {
 
   /**
    * Handle search input changes
-   * @param {Event} e - Input change event
+   * @param e - Input change event
    */
-  const handleSearchInput = (e) => {
+  const handleSearchInput = (e: ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
   };
 
@@ -141,7 +150,7 @@ export default function HomeView() {
                     <button
                       onClick={() => {
                         const existingFav = favorites.find(fav => isInFavorites(result, [fav]));
-                        if (existingFav) removeFavorite(existingFav._id);
+                        if (existingFav?._id) removeFavorite(existingFav._id);
                       }}
                       data-umami-event="remove-favorite-clicked"
                       className="flex items-center gap-2 px-4 py-2 rounded-full bg-red-500 hover:bg-red-600 transition-colors cursor-pointer"
@@ -208,7 +217,7 @@ export default function HomeView() {
                     <DynamicIcon name="heart" size={20} className="text-red-500" />
                     <span>{favorite.title}</span>
                   </div>
-                  <span className="text-sm opacity-70">{timestampToString(favorite.created_at, 'ago')}</span>
+                  <span className="text-sm opacity-70">{String(timestampToString(favorite.created_at as number, 'ago'))}</span>
                 </div>
               ))}
             </div>

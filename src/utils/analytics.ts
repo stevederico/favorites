@@ -3,23 +3,38 @@
  * Safely handles umami not being loaded and sanitizes data
  */
 
-/** @returns {boolean} True if running on localhost — skip all tracking */
-const isLocal = () => ['localhost', '127.0.0.1'].includes(window.location.hostname);
+/** Minimal shape of the global Umami tracker injected by the analytics script. */
+interface Umami {
+  track(eventName?: string, data?: Record<string, unknown>): void;
+  identify(idOrData: string | Record<string, unknown>, data?: Record<string, unknown>): void;
+}
+
+declare global {
+  interface Window {
+    umami?: Umami;
+  }
+}
+
+/** Arbitrary event payload accepted by trackEvent / identifyUser. */
+type EventData = Record<string, unknown>;
+
+/** True if running on localhost — skip all tracking */
+const isLocal = (): boolean => ['localhost', '127.0.0.1'].includes(window.location.hostname);
 
 /**
  * Sanitize event data for Umami
  * Ensures data is always a valid object with proper types
- * @param {Object} data - Data to sanitize
- * @returns {Object} Sanitized data object
+ * @param data - Data to sanitize
+ * @returns Sanitized data object
  */
-const sanitizeEventData = (data) => {
+const sanitizeEventData = (data: unknown): Record<string, unknown> => {
   if (!data || typeof data !== 'object' || Array.isArray(data)) {
     return {};
   }
 
-  const sanitized = {};
+  const sanitized: Record<string, unknown> = {};
 
-  for (const [key, value] of Object.entries(data)) {
+  for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
     if (value === undefined || value === null || typeof value === 'function') {
       continue;
     }
@@ -44,10 +59,10 @@ const sanitizeEventData = (data) => {
 
 /**
  * Track an analytics event
- * @param {string} eventName - Name of the event
- * @param {Object} data - Event data
+ * @param eventName - Name of the event
+ * @param data - Event data
  */
-export const trackEvent = (eventName, data = {}) => {
+export const trackEvent = (eventName: string, data: EventData = {}): void => {
   if (isLocal()) return;
   if (typeof window !== 'undefined' && window.umami) {
     try {
@@ -61,10 +76,10 @@ export const trackEvent = (eventName, data = {}) => {
 
 /**
  * Identify a user for analytics
- * @param {string} userId - User ID
- * @param {Object} data - User metadata
+ * @param userId - User ID
+ * @param data - User metadata
  */
-export const identifyUser = (userId, data = {}) => {
+export const identifyUser = (userId: string, data: EventData = {}): void => {
   if (isLocal()) return;
   if (typeof window !== 'undefined' && window.umami) {
     try {
@@ -82,7 +97,7 @@ export const identifyUser = (userId, data = {}) => {
 /**
  * Track a page view
  */
-export const trackPageView = () => {
+export const trackPageView = (): void => {
   if (isLocal()) return;
   if (typeof window !== 'undefined' && window.umami) {
     try {

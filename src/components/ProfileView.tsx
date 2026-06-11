@@ -3,6 +3,7 @@ import DynamicIcon from '@stevederico/skateboard-ui/DynamicIcon';
 import { useParams, Link, useNavigate } from 'react-router';
 import Header from '@stevederico/skateboard-ui/Header';
 import { useFavorites } from '../contexts/FavoritesContext';
+import type { Favorite, SearchResult } from '../contexts/FavoritesContext';
 
 
 export default function ProfileView() {
@@ -10,18 +11,19 @@ export default function ProfileView() {
   const { username } = useParams();
   const navigate = useNavigate();
   const { favorites, searchLocations, updateFavorite, getFavoritesUserName } = useFavorites();
-  const [loading, setLoading] = useState({});
-  const [searchResults, setSearchResults] = useState([]);
-  const [selectedFavorite, setSelectedFavorite] = useState(null);
+  const [loading, setLoading] = useState<Record<string, boolean>>({});
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [selectedFavorite, setSelectedFavorite] = useState<Favorite | null>(null);
 
   useEffect(() => {
-    getFavoritesUserName(username)
+    if (username) getFavoritesUserName(username);
   }, [username]);
 
-  const handleGetDetails = async (favorite) => {
-    if (loading[favorite._id]) return;
+  const handleGetDetails = async (favorite: Favorite) => {
+    const favoriteId = String(favorite._id);
+    if (loading[favoriteId]) return;
 
-    setLoading(prev => ({ ...prev, [favorite._id]: true }));
+    setLoading(prev => ({ ...prev, [favoriteId]: true }));
 
     try {
       const query = `${favorite.title} ${favorite.address?.split(',').slice(-2)[0] || ''}`.trim();
@@ -38,12 +40,12 @@ export default function ProfileView() {
     } catch (error) {
       console.error('Error getting details:', error);
     } finally {
-      setLoading(prev => ({ ...prev, [favorite._id]: false }));
+      setLoading(prev => ({ ...prev, [favoriteId]: false }));
     }
   };
 
-  const handleSelectResult = async (result) => {
-    if (!selectedFavorite) return;
+  const handleSelectResult = async (result: SearchResult) => {
+    if (!selectedFavorite?._id) return;
 
     try {
       await updateFavorite(selectedFavorite._id, {
@@ -95,15 +97,15 @@ export default function ProfileView() {
                 >
 
                   <div className="flex flex-col gap-1 text-sm">
-                    <h4 className="font-semibold">{result.name}</h4>
+                    <h4 className="font-semibold">{(result as any).name}</h4>
                     <p className="text-sm mb-2">{result.address}</p>
                     <span className="px-2 rounded ">PlaceID: {result.placeID}</span>
 
                     <span className="px-2 rounded ">Lat: {result.coordinates.lat}</span>
                     <span className="px-2 rounded ">Lon: {result.coordinates.lon}</span>
-                    <span className="px-2 rounded ">AddressType: {result.details.addresstype}</span>
-                    <span className="px-2 rounded ">Class: {result.details.class}</span>
-                    <span className="px-2 rounded ">Type: {result.details.type}</span>
+                    <span className="px-2 rounded ">AddressType: {(result.details as any).addresstype}</span>
+                    <span className="px-2 rounded ">Class: {(result.details as any).class}</span>
+                    <span className="px-2 rounded ">Type: {(result.details as any).type}</span>
                   </div>
                 </div>
               ))}

@@ -11,22 +11,22 @@
 import { useEffect, useRef } from 'react';
 import { trackEvent, trackPageView } from './analytics';
 
-/** @returns {boolean} True if running on localhost */
-const isLocal = () => ['localhost', '127.0.0.1'].includes(window.location.hostname);
+/** True if running on localhost */
+const isLocal = (): boolean => ['localhost', '127.0.0.1'].includes(window.location.hostname);
 
 /**
  * Hook that sets up all passive analytics trackers.
  * Call once at app root level (e.g., in AnalyticsProvider wrapper).
  * Automatically cleans up all listeners on unmount.
  */
-export default function useAdvancedAnalytics() {
-  const scrollDepthsRef = useRef(new Set());
+export default function useAdvancedAnalytics(): void {
+  const scrollDepthsRef = useRef<Set<number>>(new Set());
   const timeStartRef = useRef(Date.now());
-  const timeThresholdsRef = useRef(new Set());
+  const timeThresholdsRef = useRef<Set<number>>(new Set());
   const exitFiredRef = useRef(false);
   const errorCountRef = useRef(0);
-  const observerRef = useRef(null);
-  const intervalRef = useRef(null);
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastPathRef = useRef(window.location.pathname);
 
   useEffect(() => {
@@ -47,10 +47,10 @@ export default function useAdvancedAnalytics() {
     const observeSections = () => {
       if (observerRef.current) observerRef.current.disconnect();
 
-      const seen = new Set();
+      const seen = new Set<string | undefined>();
       observerRef.current = new IntersectionObserver((entries) => {
         for (const entry of entries) {
-          const id = entry.target.dataset.sectionId;
+          const id = (entry.target as HTMLElement).dataset.sectionId;
           if (entry.isIntersecting && !seen.has(id)) {
             seen.add(id);
             trackEvent('section-viewed', { section: id, page: window.location.pathname });
@@ -60,7 +60,7 @@ export default function useAdvancedAnalytics() {
       }, { threshold: 0.3 });
 
       document.querySelectorAll('[data-section-id]').forEach((el) => {
-        observerRef.current.observe(el);
+        observerRef.current?.observe(el);
       });
     };
 
@@ -113,7 +113,7 @@ export default function useAdvancedAnalytics() {
     }, 5000);
 
     // --- Exit intent ---
-    const handleMouseout = (e) => {
+    const handleMouseout = (e: MouseEvent) => {
       if (!e.relatedTarget && !exitFiredRef.current && e.clientY < 10) {
         exitFiredRef.current = true;
         trackEvent('exit-intent', { page: window.location.pathname });
@@ -122,7 +122,7 @@ export default function useAdvancedAnalytics() {
     document.addEventListener('mouseout', handleMouseout);
 
     // --- Page load performance (once) ---
-    const perf = performance.getEntriesByType('navigation')[0];
+    const perf = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
     if (perf) {
       const loadTime = Math.round(perf.loadEventEnd - perf.startTime);
       const speed = loadTime < 1000 ? 'fast' : loadTime < 3000 ? 'medium' : 'slow';
@@ -130,7 +130,7 @@ export default function useAdvancedAnalytics() {
     }
 
     // --- JS error tracking (max 5 per session) ---
-    const handleError = (e) => {
+    const handleError = (e: ErrorEvent) => {
       if (errorCountRef.current >= 5) return;
       errorCountRef.current++;
       trackEvent('js-error', { message: (e.message || 'unknown').substring(0, 50), page: window.location.pathname });
