@@ -26,6 +26,14 @@ function jwtSign(payload: JwtPayload, secret: string): string {
   const sig = crypto.createHmac('sha256', secret).update(`${head}.${body}`).digest('base64url');
   return `${head}.${body}.${sig}`;
 }
+/** Runtime guard for a decoded JWT payload (mirrors server.ts). */
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+function isJwtPayload(value: unknown): value is JwtPayload {
+  if (!isRecord(value)) return false;
+  return typeof value.userID === 'string' && typeof value.exp === 'number';
+}
 function jwtVerify(token: string, secret: string): JwtPayload {
   const parts = token.split('.');
   if (parts.length !== 3) throw new Error('Invalid token');
@@ -37,7 +45,11 @@ function jwtVerify(token: string, secret: string): JwtPayload {
   if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) {
     throw new Error('Invalid signature');
   }
-  const payload = JSON.parse(Buffer.from(body, 'base64url').toString()) as JwtPayload;
+  const parsed: unknown = JSON.parse(Buffer.from(body, 'base64url').toString());
+  if (!isJwtPayload(parsed)) {
+    throw new Error('Invalid token payload');
+  }
+  const payload = parsed;
   if (payload.exp && Math.floor(Date.now() / 1000) > payload.exp) {
     const err = new Error('Token expired');
     err.name = 'TokenExpiredError';
