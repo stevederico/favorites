@@ -14,7 +14,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readFile, mkdir, stat } from 'node:fs';
 import { promisify } from 'node:util';
-import type { BackendConfig, BoundDatabase, CsrfTokenEntry, DatabaseConfig, JwtPayload, Logger, Subscription, UserSetFields } from './types.ts';
+import type { BackendConfig, BoundDatabase, CsrfTokenEntry, DatabaseConfig, JwtPayload, Logger, SqlParam, Subscription, UserSetFields } from './types.ts';
 import { createLogger } from './lib/logger.ts';
 import { isProd, loadEnvFile, loadLocalENV, resolveEnvironmentVariables, validateEnvironmentVariables } from './lib/env.ts';
 import { escapeHtml, validateEmail, validatePassword, validateName } from './lib/validation.ts';
@@ -1474,6 +1474,214 @@ app.post("/api/portal", authMiddleware, csrfProtection, async (c) => {
   } catch (e) {
     logger.error('Portal session error', { error: errorMessage(e) });
     return c.json({ error: "Stripe portal failed" }, 500);
+  }
+});
+
+// ==== FAVORITES ====
+// Saved-location CRUD, backed by the `favorites` table via the SQL adapter
+// (executeQuery). Restored from the pre-skateboard MongoDB implementation and
+// rewritten for the SQL/libsql backend. coordinates/details are JSON text columns.
+
+/** Response shape returned to the client for a favorite. */
+interface FavoriteResponse {
+  _id: string;
+  userID: string;
+  title: string;
+  address: string;
+  notes: string;
+  coordinates: { lat: number; lon: number } | null;
+  placeID: string | number | null;
+  details: Record<string, unknown> | null;
+  created_at: number;
+}
+
+/** Narrow an unknown value to a non-null object. */
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+/** Parse a JSON coordinates column into {lat, lon}, or null when malformed. */
+function parseCoordinates(value: unknown): { lat: number; lon: number } | null {
+  if (typeof value !== 'string') return null;
+  try {
+    const parsed: unknown = JSON.parse(value);
+    if (isPlainObject(parsed) && typeof parsed.lat === 'number' && typeof parsed.lon === 'number') {
+      return { lat: parsed.lat, lon: parsed.lon };
+    }
+  } catch { /* malformed JSON — treat as absent */ }
+  return null;
+}
+
+/** Parse a JSON details column into an object, or null when malformed. */
+function parseDetailsColumn(value: unknown): Record<string, unknown> | null {
+  if (typeof value !== 'string') return null;
+  try {
+    const parsed: unknown = JSON.parse(value);
+    if (isPlainObject(parsed)) return parsed;
+  } catch { /* malformed JSON — treat as absent */ }
+  return null;
+}
+
+/** Map a raw favorites row (JSON columns as text) to the client Favorite shape. */
+function rowToFavorite(row: unknown): FavoriteResponse | null {
+  if (!isPlainObject(row)) return null;
+  const { _id, userID, title, address, notes, placeID, created_at } = row;
+  if (typeof _id !== 'string' || typeof userID !== 'string') return null;
+  return {
+    _id,
+    userID,
+    title: typeof title === 'string' ? title : '',
+    address: typeof address === 'string' ? address : '',
+    notes: typeof notes === 'string' ? notes : '',
+    coordinates: parseCoordinates(row.coordinates),
+    placeID: typeof placeID === 'string' || typeof placeID === 'number' ? placeID : null,
+    details: parseDetailsColumn(row.details),
+    created_at: typeof created_at === 'number' ? created_at : 0
+  };
+}
+
+/** Rows array from an executeQuery SELECT result (empty on failure). */
+function selectRows(result: { success: boolean; data?: unknown }): unknown[] {
+  return result.success && Array.isArray(result.data) ? result.data : [];
+}
+
+/**
+ * GET /api/favorites?uid= | ?username= — list a user's non-deleted favorites.
+ * Public (matches the original app): favorites are viewable by uid or username.
+ */
+app.get("/api/favorites", async (c) => {
+  try {
+    const uid = c.req.query('uid');
+    const username = c.req.query('username');
+    let targetUserID: string | null = null;
+
+    if (uid) {
+      targetUserID = uid;
+    } else if (username) {
+      const userRes = await db.executeQuery({ query: "SELECT _id FROM Users WHERE name = ? COLLATE NOCASE LIMIT 1", params: [username] });
+      const first = selectRows(userRes)[0];
+      if (!isPlainObject(first) || typeof first._id !== 'string') return c.json([]);
+      targetUserID = first._id;
+    } else {
+      return c.json({ error: "Missing uid or username parameter" }, 400);
+    }
+
+    const res = await db.executeQuery({
+      query: "SELECT * FROM favorites WHERE userID = ? AND (deleted IS NULL OR deleted = 0) ORDER BY created_at DESC",
+      params: [targetUserID]
+    });
+    if (!res.success) return c.json({ error: "Failed to get favorites" }, 500);
+    const favorites = selectRows(res).map(rowToFavorite).filter((f): f is FavoriteResponse => f !== null);
+    return c.json(favorites);
+  } catch (e) {
+    logger.error('Get favorites error', { error: errorMessage(e) });
+    return c.json({ error: "Failed to get favorites" }, 500);
+  }
+});
+
+/** GET /api/profiles — public { _id, name } list of all users. */
+app.get("/api/profiles", async (c) => {
+  try {
+    const res = await db.executeQuery({ query: "SELECT _id, name FROM Users", params: [] });
+    const profiles = selectRows(res)
+      .filter(isPlainObject)
+      .filter((r): r is Record<string, unknown> => typeof r._id === 'string')
+      .map(r => ({ _id: r._id, name: typeof r.name === 'string' ? r.name : '' }));
+    return c.json(profiles);
+  } catch (e) {
+    logger.error('Get profiles error', { error: errorMessage(e) });
+    return c.json({ error: "Failed to get profiles" }, 500);
+  }
+});
+
+/** POST /api/favorites — create a favorite for the authenticated user. */
+app.post("/api/favorites", authMiddleware, csrfProtection, async (c) => {
+  try {
+    const userID = c.get('userID');
+    const body: unknown = await c.req.json();
+    if (!isPlainObject(body)) return c.json({ error: "Invalid request body" }, 400);
+    const { title, address, coordinates, notes, placeID, details } = body;
+    if (typeof title !== 'string' || !isPlainObject(coordinates)) {
+      return c.json({ error: "Missing required fields (title, coordinates)" }, 400);
+    }
+    const favorite: FavoriteResponse = {
+      _id: generateUUID(),
+      userID,
+      title: escapeHtml(title),
+      address: typeof address === 'string' ? escapeHtml(address) : '',
+      notes: typeof notes === 'string' ? escapeHtml(notes) : '',
+      coordinates: { lat: Number(coordinates.lat), lon: Number(coordinates.lon) },
+      placeID: typeof placeID === 'string' || typeof placeID === 'number' ? placeID : null,
+      details: isPlainObject(details) ? details : null,
+      created_at: Date.now()
+    };
+    const res = await db.executeQuery({
+      query: "INSERT INTO favorites (_id, userID, title, address, notes, coordinates, placeID, details, created_at, deleted) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)",
+      params: [favorite._id, favorite.userID, favorite.title, favorite.address, favorite.notes,
+        JSON.stringify(favorite.coordinates), favorite.placeID, favorite.details ? JSON.stringify(favorite.details) : null, favorite.created_at]
+    });
+    if (!res.success) return c.json({ error: "Failed to create favorite" }, 500);
+    logger.info('Favorite created');
+    return c.json(favorite, 201);
+  } catch (e) {
+    logger.error('Create favorite error', { error: errorMessage(e) });
+    return c.json({ error: "Failed to create favorite" }, 500);
+  }
+});
+
+/** PUT /api/favorites — update notes/placeID/coordinates/details on an owned favorite. */
+app.put("/api/favorites", authMiddleware, csrfProtection, async (c) => {
+  try {
+    const userID = c.get('userID');
+    const body: unknown = await c.req.json();
+    if (!isPlainObject(body) || typeof body._id !== 'string') return c.json({ error: "Missing favorite _id" }, 400);
+    const _id = body._id;
+
+    const existing = selectRows(await db.executeQuery({ query: "SELECT userID FROM favorites WHERE _id = ?", params: [_id] }))[0];
+    if (!isPlainObject(existing)) return c.json({ error: "Favorite not found" }, 404);
+    if (existing.userID !== userID) return c.json({ error: "Unauthorized" }, 403);
+
+    const sets: string[] = [];
+    const params: SqlParam[] = [];
+    if (typeof body.notes === 'string') { sets.push("notes = ?"); params.push(escapeHtml(body.notes)); }
+    if (body.placeID !== undefined) { sets.push("placeID = ?"); params.push(typeof body.placeID === 'string' || typeof body.placeID === 'number' ? body.placeID : null); }
+    if (isPlainObject(body.coordinates)) { sets.push("coordinates = ?"); params.push(JSON.stringify({ lat: Number(body.coordinates.lat), lon: Number(body.coordinates.lon) })); }
+    if (isPlainObject(body.details)) { sets.push("details = ?"); params.push(JSON.stringify(body.details)); }
+
+    if (sets.length > 0) {
+      params.push(_id);
+      const upd = await db.executeQuery({ query: `UPDATE favorites SET ${sets.join(', ')} WHERE _id = ?`, params });
+      if (!upd.success) return c.json({ error: "Failed to update favorite" }, 500);
+    }
+
+    const updated = rowToFavorite(selectRows(await db.executeQuery({ query: "SELECT * FROM favorites WHERE _id = ?", params: [_id] }))[0]);
+    logger.info('Favorite updated');
+    return c.json(updated);
+  } catch (e) {
+    logger.error('Update favorite error', { error: errorMessage(e) });
+    return c.json({ error: "Failed to update favorite" }, 500);
+  }
+});
+
+/** DELETE /api/favorites — soft-delete an owned favorite (sets deleted = 1). */
+app.delete("/api/favorites", authMiddleware, csrfProtection, async (c) => {
+  try {
+    const userID = c.get('userID');
+    const body: unknown = await c.req.json();
+    if (!isPlainObject(body) || typeof body._id !== 'string') return c.json({ error: "Missing favorite _id" }, 400);
+    const _id = body._id;
+
+    const existing = selectRows(await db.executeQuery({ query: "SELECT userID FROM favorites WHERE _id = ?", params: [_id] }))[0];
+    if (!isPlainObject(existing)) return c.json({ error: "Favorite not found" }, 404);
+    if (existing.userID !== userID) return c.json({ error: "Unauthorized" }, 403);
+
+    const res = await db.executeQuery({ query: "UPDATE favorites SET deleted = 1 WHERE _id = ?", params: [_id] });
+    if (!res.success) return c.json({ error: "Failed to delete favorite" }, 500);
+    logger.info('Favorite deleted');
+    return c.json({ success: true });
+  } catch (e) {
+    logger.error('Delete favorite error', { error: errorMessage(e) });
+    return c.json({ error: "Failed to delete favorite" }, 500);
   }
 });
 
