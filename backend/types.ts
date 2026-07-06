@@ -21,7 +21,7 @@ export type DbType = 'sqlite' | 'postgresql' | 'postgres' | 'mongodb' | 'mongo';
  * Canonical dialect label each adapter reports in
  * `ExecuteResult.metadata.dbType`.
  */
-export type DbDialect = 'sqlite' | 'postgresql' | 'mongodb';
+export type DbDialect = 'sqlite' | 'libsql' | 'postgresql' | 'mongodb';
 
 // ==== USER & SUBSCRIPTION SHAPES ====
 

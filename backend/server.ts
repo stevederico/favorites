@@ -441,6 +441,7 @@ export async function __testLoadApplicationConfig(): Promise<BackendConfig> {
       staticDir: rawConfig.staticDir || '../dist',
       database: {
         ...rawConfig.database,
+        dbType: process.env.DB_TYPE || rawConfig.database.dbType,
         connectionString: resolveEnvironmentVariables(rawConfig.database.connectionString, logger)
       }
     };
