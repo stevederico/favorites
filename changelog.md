@@ -1,5 +1,11 @@
 ## CHANGELOG
 
+0.8.0
+
+  Restore favorites feature
+  Add favorites table
+  Import favorites data
+
 0.7.0
 
   Migrate primary database from MongoDB to SQLite
