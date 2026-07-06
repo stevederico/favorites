@@ -197,7 +197,21 @@ export class LibSQLProvider implements DatabaseProvider<Client> {
         event_id TEXT PRIMARY KEY,
         event_type TEXT NOT NULL,
         processed_at INTEGER NOT NULL
-      )`
+      )`,
+      // App-specific (BXFav): saved locations. coordinates/details stored as JSON text.
+      `CREATE TABLE IF NOT EXISTS favorites (
+        _id TEXT PRIMARY KEY,
+        userID TEXT NOT NULL,
+        title TEXT,
+        address TEXT,
+        notes TEXT,
+        coordinates TEXT,
+        placeID TEXT,
+        details TEXT,
+        created_at INTEGER,
+        deleted INTEGER DEFAULT 0
+      )`,
+      `CREATE INDEX IF NOT EXISTS idx_favorites_userid ON favorites(userID)`
     ], 'write');
   }
 
