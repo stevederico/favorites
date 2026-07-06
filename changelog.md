@@ -1,5 +1,9 @@
 ## CHANGELOG
 
+0.7.0
+
+  Migrate primary database from MongoDB to SQLite
+
 0.6.0
 
   Bump skateboard 3.4.0
