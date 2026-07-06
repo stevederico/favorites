@@ -55,6 +55,9 @@ let loadPostgresProvider: () => Promise<unknown> = async () =>
 let loadMongoProvider: () => Promise<unknown> = async () =>
   (await import('./mongodb.ts')).MongoDBProvider;
 
+let loadLibsqlProvider: () => Promise<unknown> = async () =>
+  (await import('./libsql.ts')).LibSQLProvider;
+
 /**
  * Test-only seam: swap the postgres/mongodb provider loaders. Avoids
  * `mock.module('./postgres.ts')` / `mock.module('./mongodb.ts')`, whose exports don't
@@ -118,6 +121,12 @@ class DatabaseManager {
         case 'sqlite':
           provider = new SQLiteProvider();
           break;
+        case 'libsql':
+        case 'turso': {
+          const LibSQLProvider = resolveProviderConstructor(await loadLibsqlProvider(), 'libsql');
+          provider = new LibSQLProvider();
+          break;
+        }
         case 'postgresql':
         case 'postgres': {
           const PostgreSQLProvider = resolveProviderConstructor(await loadPostgresProvider(), 'postgres');
