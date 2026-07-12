@@ -50,7 +50,7 @@ export default function useAdvancedAnalytics(): void {
       const seen = new Set<string | undefined>();
       observerRef.current = new IntersectionObserver((entries) => {
         for (const entry of entries) {
-          const id = (entry.target as HTMLElement).dataset.sectionId;
+          const id = entry.target instanceof HTMLElement ? entry.target.dataset.sectionId : undefined;
           if (entry.isIntersecting && !seen.has(id)) {
             seen.add(id);
             trackEvent('section-viewed', { section: id, page: window.location.pathname });
@@ -122,7 +122,8 @@ export default function useAdvancedAnalytics(): void {
     document.addEventListener('mouseout', handleMouseout);
 
     // --- Page load performance (once) ---
-    const perf = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
+    const navEntry = performance.getEntriesByType('navigation')[0];
+    const perf = navEntry instanceof PerformanceNavigationTiming ? navEntry : undefined;
     if (perf) {
       const loadTime = Math.round(perf.loadEventEnd - perf.startTime);
       const speed = loadTime < 1000 ? 'fast' : loadTime < 3000 ? 'medium' : 'slow';

@@ -134,7 +134,7 @@ export function FavoritesProvider({ children }: FavoritesProviderProps) {
       return newFavorite;
     } catch (error) {
       console.error('Error adding favorite:', error);
-      trackEvent('favorite-add-failed', { error: (error as Error).message });
+      trackEvent('favorite-add-failed', { error: error instanceof Error ? error.message : String(error) });
       return null;
     }
   }
@@ -159,7 +159,7 @@ export function FavoritesProvider({ children }: FavoritesProviderProps) {
       return false;
     } catch (error) {
       console.error('Error removing favorite:', error);
-      trackEvent('favorite-remove-failed', { error: (error as Error).message });
+      trackEvent('favorite-remove-failed', { error: error instanceof Error ? error.message : String(error) });
       return false;
     }
   }
@@ -182,7 +182,7 @@ export function FavoritesProvider({ children }: FavoritesProviderProps) {
       return updatedFavorite;
     } catch (error) {
       console.error('Error updating favorite:', error);
-      trackEvent('favorite-update-failed', { error: (error as Error).message });
+      trackEvent('favorite-update-failed', { error: error instanceof Error ? error.message : String(error) });
       return null;
     }
   }
@@ -190,18 +190,27 @@ export function FavoritesProvider({ children }: FavoritesProviderProps) {
   async function searchLocations(query: string): Promise<SearchResult[]> {
     if (!query?.trim()) return [];
     const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&addressdetails=1&limit=10&extratags=1`);
-    const data = await response.json();
+    const data: unknown = await response.json();
+    if (!Array.isArray(data)) return [];
     trackEvent('location-searched', { resultsCount: data.length });
-    return data.map((item: any) => ({
-        title: item.name,
-        address: item.display_name.replace(`${item.name},`, '').trim(),
-        coordinates: {
-            lat: parseFloat(item.lat),
-            lon: parseFloat(item.lon)
-        },
-        placeID: item.place_id,
-        details: item
-    }));
+    return data.flatMap((item): SearchResult[] => {
+        if (!item || typeof item !== 'object') return [];
+        const name = 'name' in item && typeof item.name === 'string' ? item.name : '';
+        const display = 'display_name' in item && typeof item.display_name === 'string' ? item.display_name : '';
+        const lat = 'lat' in item ? parseFloat(String(item.lat)) : NaN;
+        const lon = 'lon' in item ? parseFloat(String(item.lon)) : NaN;
+        if (!Number.isFinite(lat) || !Number.isFinite(lon)) return [];
+        const placeID = 'place_id' in item ? (typeof item.place_id === 'string' || typeof item.place_id === 'number' ? item.place_id : '') : '';
+        const details: Record<string, unknown> = {};
+        for (const [k, v] of Object.entries(item)) details[k] = v;
+        return [{
+          title: name,
+          address: display.replace(`${name},`, '').trim(),
+          coordinates: { lat, lon },
+          placeID,
+          details,
+        }];
+    });
   }
 
   function isInFavorites(result: { coordinates?: Coordinates }, favoritesToCheck: Favorite[] = favorites): boolean {

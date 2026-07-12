@@ -217,7 +217,7 @@ export default function HomeView() {
                     <DynamicIcon name="heart" size={20} className="text-red-500" />
                     <span>{favorite.title}</span>
                   </div>
-                  <span className="text-sm opacity-70">{String(timestampToString(favorite.created_at as number, 'ago'))}</span>
+                  <span className="text-sm opacity-70">{typeof favorite.created_at === 'number' ? String(timestampToString(favorite.created_at, 'ago')) : ''}</span>
                 </div>
               ))}
             </div>

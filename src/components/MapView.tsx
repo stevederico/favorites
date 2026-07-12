@@ -113,8 +113,9 @@ export default function MapView() {
   const { username } = useParams();
 
   useEffect(() => {
-    if (username || qUsername) {
-      getFavoritesUserName((username || qUsername) as string);
+    const name = username ?? qUsername;
+    if (name) {
+      getFavoritesUserName(name);
       return;
     }
     if (state.user) {
@@ -130,10 +131,12 @@ export default function MapView() {
 
     const favorite = favorites.find(f => isInFavorites(location, [f]));
 
+    const placeTitle = location.title || location.name || '';
+
     const handleToggleFavorite = async () => {
       if (!isFavorited) {
-        const newFavorite = await addFavorite({
-          title: (location.title || location.name) as string,
+        await addFavorite({
+          title: placeTitle,
           notes: favorite?.notes || '',
           coordinates: location.coordinates,
           address: location.address
@@ -150,7 +153,9 @@ export default function MapView() {
           });
         }
       } else {
-        await removeFavorite(favorite!._id as string);
+        const favId = favorite?._id;
+        if (!favId) return;
+        await removeFavorite(String(favId));
         if (mapInstanceRef.current) {
           mapInstanceRef.current.eachLayer((layer) => {
             if (layer instanceof L.Marker && layer._searchMarker) {
@@ -167,8 +172,8 @@ export default function MapView() {
     const handleSaveNotes = async (notes: string) => {
       if (!favorite && !isFavorited) {
         // Create favorite first if it doesn't exist
-        const newFavorite = await addFavorite({
-          title: (location.title || location.name) as string,
+        await addFavorite({
+          title: placeTitle,
           notes: notes,
           coordinates: location.coordinates,
           address: location.address
@@ -182,8 +187,8 @@ export default function MapView() {
             }
           });
         }
-      } else if (favorite) {
-        await updateFavorite(favorite._id as string, { notes });
+      } else if (favorite?._id) {
+        await updateFavorite(String(favorite._id), { notes });
       }
     };
 
@@ -208,30 +213,35 @@ export default function MapView() {
     setSearchResults([]);
     trackEvent('search-result-clicked', { title: result.title });
 
+    const map = mapInstanceRef.current;
+    if (!map) return;
+
+    const lat = result.coordinates.lat;
+    const lon = result.coordinates.lon;
     const location: PopupLocation = {
       title: result.title,
-      coordinates: {lat: result.coordinates.lat, lon: result.coordinates.lon},
+      coordinates: { lat, lon },
       address: result.address
     };
 
-    mapInstanceRef.current!.setView([location.coordinates!.lat, location.coordinates!.lon], 14);
+    map.setView([lat, lon], 14);
     const existingFavorite = isInFavorites(location, favorites);
 
     // Clear existing search markers
-    mapInstanceRef.current!.eachLayer((layer) => {
+    map.eachLayer((layer) => {
       if (layer instanceof L.Marker && layer._searchMarker) {
         layer.remove();
       }
     });
 
-    const marker = L.marker([location.coordinates!.lat, location.coordinates!.lon]);
+    const marker = L.marker([lat, lon]);
     marker._searchMarker = true;
     marker.bindPopup(createPopupContent(location, !!existingFavorite), {
       minWidth: 250,
       maxWidth: 400,
       className: 'custom-popup'
     })
-      .addTo(mapInstanceRef.current!)
+      .addTo(map)
       .openPopup();
   };
 
@@ -291,24 +301,28 @@ export default function MapView() {
 
   // Handle map view and markers separately
   useEffect(() => {
-    if (!mapInstanceRef.current || !favorites) return;
+    const map = mapInstanceRef.current;
+    if (!map || !favorites) return;
 
     // Clear existing markers
-    mapInstanceRef.current.eachLayer((layer) => {
+    map.eachLayer((layer) => {
       if (layer instanceof L.Marker) {
         layer.remove();
       }
     });
 
+    const latParam = searchParams.get('lat');
+    const lonParam = searchParams.get('lon');
+    const titleParam = searchParams.get('title');
+    const addressParam = searchParams.get('address');
+
     // Set view based on URL params or first favorite
-    if (searchParams.get('lat') && searchParams.get('lon')) {
-      const lat = parseFloat(searchParams.get('lat') as string);
-      const lon = parseFloat(searchParams.get('lon') as string);
-      mapInstanceRef.current.setView([lat, lon], 14);
+    if (latParam && lonParam) {
+      map.setView([parseFloat(latParam), parseFloat(lonParam)], 14);
     } else if (favorites.length > 0 && favorites[0].coordinates) {
       const coords = getValidLatLng(favorites[0].coordinates);
       if (coords) {
-        mapInstanceRef.current.setView(coords, 14);
+        map.setView(coords, 14);
       }
     }
 
@@ -323,18 +337,18 @@ export default function MapView() {
             maxWidth: 400,
             className: 'custom-popup'
           })
-          .addTo(mapInstanceRef.current!);
+          .addTo(map);
       }
     });
 
     // Handle URL parameter pin last to ensure it's on top
-    if (searchParams.get('lat') && searchParams.get('lon')) {
+    if (latParam && lonParam) {
       const coords = {
-        lat: parseFloat(searchParams.get('lat') as string),
-        lon: parseFloat(searchParams.get('lon') as string)
+        lat: parseFloat(latParam),
+        lon: parseFloat(lonParam)
       };
-      const title = searchParams.get('title') ? decodeURIComponent(searchParams.get('title') as string) : 'Location';
-      const address = searchParams.get('address') ? decodeURIComponent(searchParams.get('address') as string) : '';
+      const title = titleParam ? decodeURIComponent(titleParam) : 'Location';
+      const address = addressParam ? decodeURIComponent(addressParam) : '';
       const location: PopupLocation = { title, coordinates: coords, address };
       const favorite = favorites.find(f => isInFavorites(location, [f]));
 
@@ -344,7 +358,7 @@ export default function MapView() {
           maxWidth: 400,
           className: 'custom-popup'
         })
-        .addTo(mapInstanceRef.current!);
+        .addTo(map);
       marker.openPopup();
     }
   }, [favorites, searchParams, username, qUsername]); // Added username dependencies

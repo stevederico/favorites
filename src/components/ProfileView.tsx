@@ -97,15 +97,15 @@ export default function ProfileView() {
                 >
 
                   <div className="flex flex-col gap-1 text-sm">
-                    <h4 className="font-semibold">{(result as any).name}</h4>
+                    <h4 className="font-semibold">{result.title}</h4>
                     <p className="text-sm mb-2">{result.address}</p>
                     <span className="px-2 rounded ">PlaceID: {result.placeID}</span>
 
                     <span className="px-2 rounded ">Lat: {result.coordinates.lat}</span>
                     <span className="px-2 rounded ">Lon: {result.coordinates.lon}</span>
-                    <span className="px-2 rounded ">AddressType: {(result.details as any).addresstype}</span>
-                    <span className="px-2 rounded ">Class: {(result.details as any).class}</span>
-                    <span className="px-2 rounded ">Type: {(result.details as any).type}</span>
+                    <span className="px-2 rounded ">AddressType: {String(result.details.addresstype ?? '')}</span>
+                    <span className="px-2 rounded ">Class: {String(result.details.class ?? '')}</span>
+                    <span className="px-2 rounded ">Type: {String(result.details.type ?? '')}</span>
                   </div>
                 </div>
               ))}
