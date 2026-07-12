@@ -4,10 +4,8 @@
  * The project bans `@types/*` packages, so this local shim declares only the
  * surface that MapView.tsx consumes: the map/marker/tileLayer factories, the
  * Marker and Icon classes, and the Default icon's merge/prototype helpers.
- * Runtime objects (maps, markers, popups, layers) are intentionally loose
- * (`any`) — Leaflet is used imperatively and full typings would add no safety
- * for the handful of imperative calls here, while pulling in @types is not
- * allowed.
+ * Runtime objects are minimally typed for the imperative MapView surface;
+ * full Leaflet typings are out of scope (no @types/* packages).
  */
 declare module 'leaflet' {
   /** A Leaflet popup bound to a marker. */
@@ -18,15 +16,19 @@ declare module 'leaflet' {
     update(): this;
   }
 
+  /** Base layer surface used by eachLayer + instanceof Marker checks. */
+  export interface Layer {
+    remove(): this;
+  }
+
   /** A marker layer. Extended with an app-specific `_searchMarker` flag. */
-  export interface Marker {
+  export interface Marker extends Layer {
     _searchMarker?: boolean;
     getPopup(): Popup;
     getLatLng(): { lat: number; lng: number };
     bindPopup(content: HTMLElement | string, options?: Record<string, unknown>): this;
     addTo(map: LeafletMap): this;
     openPopup(): this;
-    remove(): this;
   }
   export const Marker: {
     new (latlng: [number, number]): Marker;
@@ -36,7 +38,7 @@ declare module 'leaflet' {
   /** A Leaflet map instance. */
   export interface LeafletMap {
     setView(center: [number, number], zoom: number): this;
-    eachLayer(fn: (layer: any) => void): this;
+    eachLayer(fn: (layer: Layer) => void): this;
     remove(): this;
   }
 

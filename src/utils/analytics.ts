@@ -34,7 +34,7 @@ const sanitizeEventData = (data: unknown): Record<string, unknown> => {
 
   const sanitized: Record<string, unknown> = {};
 
-  for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
+  for (const [key, value] of Object.entries(data)) {
     if (value === undefined || value === null || typeof value === 'function') {
       continue;
     }
