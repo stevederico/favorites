@@ -32,7 +32,7 @@ export default function AnalyticsProvider({ children }: AnalyticsProviderProps) 
     const previousUser = previousUserRef.current;
 
     if (currentUser && !previousUser) {
-      identifyUser(String(currentUser.id), {
+      identifyUser(String(currentUser.id ?? ''), {
         email: currentUser.email,
         name: currentUser.name,
         subscription: currentUser.subscription?.status || 'free'
