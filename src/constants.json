@@ -49,19 +49,21 @@
             "icon": "map"
         }
     ],
-    "stripeProducts": [{
-        "price": "$5.00",
-        "title": "Monthly Plan",
-        "interval": "monthly",
-        "lookup_key": "favs_monthly",
-        "features": [
-            "Unlimited Favorites",
-            "Unlimited Maps",
-            "All Premium Features",
-            "Priority Customer Support",
-            "Cancel Anytime"
-        ]
-    }],
+    "stripeProducts": [
+        {
+            "price": "$5.00",
+            "title": "Monthly Plan",
+            "interval": "monthly",
+            "lookup_key": "favs_monthly",
+            "features": [
+                "Unlimited Favorites",
+                "Shareable Maps",
+                "Lists & Collections",
+                "Priority Support",
+                "Cancel Anytime"
+            ]
+        }
+    ],
     "pricing": {
         "title": "Simple, Transparent Pricing",
         "extras": ["Priority Customer Support", "Cancel Anytime"]
