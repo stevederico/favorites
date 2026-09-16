@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import type { ChangeEvent } from 'react';
 import { useSearchParams, useParams } from 'react-router';
-import DynamicIcon from '@stevederico/skateboard-ui/DynamicIcon';
+import { Search, MapPin } from 'lucide-react';
 import { createRoot } from 'react-dom/client';
 import { getState } from '@stevederico/skateboard-ui/Context';
 import { useFavorites } from '../contexts/FavoritesContext';
@@ -375,7 +375,7 @@ export default function MapView() {
             data-umami-event="map-search-input-focused"
             className="w-full pl-4 pr-12 py-3 rounded-xl bg-accent shadow-lg border border-gray-300 focus:outline-none focus:ring-2"
           />
-          <DynamicIcon name="search" className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+          <Search className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
 
           {/* Search Results Dropdown */}
           {(searchResults.length > 0 || isSearching) && searchQuery && (
@@ -390,7 +390,7 @@ export default function MapView() {
                     data-umami-event="map-search-result-clicked"
                     className="w-full p-3 flex items-center gap-3 hover:bg-background transition-colors border-b last:border-b-0 border-gray-300"
                   >
-                    <DynamicIcon name="map-pin" size={16} className="flex-shrink-0" />
+                    <MapPin size={16} className="flex-shrink-0" />
                     <div className="text-left overflow-hidden">
                       <div className="font-medium truncate">{result.title}</div>
                       <div className="text-sm opacity-70 truncate">{result.address}</div>
