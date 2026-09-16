@@ -4,7 +4,7 @@ import type { ChangeEvent } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { useFavorites } from '../contexts/FavoritesContext';
 import type { SearchResult } from '../contexts/FavoritesContext';
-import DynamicIcon from '@stevederico/skateboard-ui/DynamicIcon';
+import { Search, MapPin, Heart, User, Clock, CircleUser } from 'lucide-react';
 import { getBackendURL, timestampToString } from '@stevederico/skateboard-ui/Utilities';
 import { getState } from '@stevederico/skateboard-ui/Context';
 
@@ -118,7 +118,7 @@ export default function HomeView() {
           data-umami-event="search-input-focused"
           className="w-full pl-4 pr-12 py-3 rounded-xl bg-accent shadow-lg border border-gray-300 focus:outline-none focus:ring-2"
         />
-        <DynamicIcon name="search" className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+        <Search className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
       </div>
 
       {searchQuery ? (
@@ -141,7 +141,7 @@ export default function HomeView() {
                     data-umami-event="view-on-map-clicked"
                     className="flex items-center gap-2 px-4 py-2 rounded-full border border-blue-500 hover:bg-blue-600 transition-colors text-blue-500 cursor-pointer"
                   >
-                    <DynamicIcon name="map-pin" size={16} />
+                    <MapPin size={16} />
                     <span>View on Map</span>
                   </Link>
 
@@ -155,7 +155,7 @@ export default function HomeView() {
                       data-umami-event="remove-favorite-clicked"
                       className="flex items-center gap-2 px-4 py-2 rounded-full bg-red-500 hover:bg-red-600 transition-colors cursor-pointer"
                     >
-                      <DynamicIcon name="heart" size={16} />
+                      <Heart size={16} />
                       <span>Remove from Favorites</span>
                     </button>
                   ) : (
@@ -164,7 +164,7 @@ export default function HomeView() {
                       data-umami-event="add-favorite-clicked"
                       className="flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500 hover:bg-blue-600 transition-colors cursor-pointer"
                     >
-                      <DynamicIcon name="heart" size={16} />
+                      <Heart size={16} />
                       <span>Add to Favorites</span>
                     </button>
                   )}
@@ -184,7 +184,7 @@ export default function HomeView() {
                 navigate(`/app/map`);
               }}
             >
-              <DynamicIcon name="map-pin" className="font-medium text-white" size={24} />
+              <MapPin className="font-medium text-white" size={24} />
               <span className="font-medium text-white">Show Map</span>
             </button>
             <button
@@ -194,7 +194,7 @@ export default function HomeView() {
               data-umami-event="my-favorites-clicked"
               className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl bg-blue-500 hover:bg-blue-600 transition-colors cursor-pointer"
             >
-              <DynamicIcon name="user" className="font-medium text-white" size={24} />
+              <User className="font-medium text-white" size={24} />
               <span className="font-medium text-white">My Favorites</span>
             </button>
           </div>
@@ -202,7 +202,7 @@ export default function HomeView() {
           {/* Recent Activity Section - Shows latest favorites */}
           <div data-section-id="recently-added" className="mb-8">
             <div className="flex items-center gap-2 mb-4">
-              <DynamicIcon name="clock" size={24} className="text-orange-500" />
+              <Clock size={24} className="text-orange-500" />
               <h2 className="text-xl font-bold">Recently Added</h2>
             </div>
             <div className="bg-accent rounded-xl p-4 space-y-4">
@@ -214,7 +214,7 @@ export default function HomeView() {
                   className="flex items-center justify-between p-3 bg-background rounded-lg hover:bg-blue-500/10 transition-colors cursor-pointer"
                 >
                   <div className="flex items-center gap-3">
-                    <DynamicIcon name="heart" size={20} className="text-red-500" />
+                    <Heart size={20} className="text-red-500" />
                     <span>{favorite.title}</span>
                   </div>
                   <span className="text-sm opacity-70">{typeof favorite.created_at === 'number' ? String(timestampToString(favorite.created_at, 'ago')) : ''}</span>
@@ -226,7 +226,7 @@ export default function HomeView() {
           {/* Profiles Grid Section - Shows available user profiles */}
           <div data-section-id="profiles-grid" className="mb-8">
             <div className="flex items-center gap-3 mb-6">
-              <DynamicIcon name="circle-user" size={24} className="text-blue-500" />
+              <CircleUser size={24} className="text-blue-500" />
               <h2 className="text-xl font-bold">Profiles</h2>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -238,7 +238,7 @@ export default function HomeView() {
                   className="bg-accent rounded-xl shadow-md p-6 hover:shadow-lg transition-all cursor-pointer"
                 >
                   <div className="flex items-center gap-4">
-                    <DynamicIcon name="circle-user" size={40} className="text-blue-500" />
+                    <CircleUser size={40} className="text-blue-500" />
                     <div>
                       <h3 className="font-semibold text-lg capitalize">{profile.name}</h3>
                     </div>

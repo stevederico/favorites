@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import DynamicIcon from '@stevederico/skateboard-ui/DynamicIcon';
+import { X, MapPin } from 'lucide-react';
 import { useParams, Link, useNavigate } from 'react-router';
 import Header from '@stevederico/skateboard-ui/Header';
 import { useFavorites } from '../contexts/FavoritesContext';
@@ -80,7 +80,7 @@ export default function ProfileView() {
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-bold">Select Matching Location</h3>
               <button onClick={handleCloseResults} data-umami-event="close-results-modal" aria-label="Close results" className="p-2">
-                <DynamicIcon name="x" size={20} />
+                <X size={20} />
               </button>
             </div>
 
@@ -132,7 +132,7 @@ export default function ProfileView() {
                       data-umami-event="view-on-map-clicked"
                       className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent hover:bg-accent/80 border border-accent transition-colors"
                     >
-                      <DynamicIcon name="map-pin" size={16} />
+                      <MapPin size={16} />
                       <span>View on Map</span>
                     </Link>
 
@@ -150,7 +150,7 @@ export default function ProfileView() {
                     data-umami-event="view-on-map-clicked"
                     className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent hover:bg-accent/80 border border-accent transition-colors"
                   >
-                    <DynamicIcon name="map-pin" size={16} />
+                    <MapPin size={16} />
                     <span>View on Map</span>
                   </Link>
                 </div>
