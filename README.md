@@ -2,27 +2,29 @@
 
 Favorites and places tracking with interactive maps.
 
-**Version:** 0.3.3 | **Domain:** [favs.bixbyapps.com](https://favs.bixbyapps.com) | **Railway Service:** `bxfav`
+**Version:** 0.9.0 | **Domain:** [favs.bixbyapps.com](https://favs.bixbyapps.com) | **Railway Service:** `bxfav`
 
 ## Tech Stack
 
-- React 19.2, Vite 7.1, skateboard-ui 1.2.20
+- React 19.2, Vite 8.2, skateboard-ui 5.1.0
 - Leaflet 1.9.4 for interactive maps
-- Hono backend, SQLite database
+- Zero-crate Rust backend, SQLite database
 - Tailwind CSS v4
 
 ## Setup
 
 ```bash
-deno install
-deno run start    # Frontend :5173 + Backend :8000
+npm install
+npm run start          # Frontend :5173
+cd backend && cargo run   # Backend :8000
 ```
 
 ## Scripts
 
-- `deno run start` — Development (frontend + backend)
-- `deno run build` — Production build
-- `deno run prod` — Deploy to Railway
+- `npm run start` — Frontend only (Vite on :5173)
+- `npm run build` — Production frontend build
+- `cd backend && cargo run` — Rust API on :8000
+- `cd backend && cargo test --locked` — Backend tests
 
 ## Routes
 

@@ -1,5 +1,12 @@
 ## CHANGELOG
 
+0.9.0
+
+  Migrate to skateboard 5.6.0 Rust backend
+  Port /api/favorites and /api/profiles to zero-crate Rust
+  Pin skateboard-ui 5.1.0 and lucide-react 0.546.0
+  Honor DB_TYPE=libsql, copy constants.json, restore analytics CSP
+
 0.8.0
 
   Restore favorites feature
