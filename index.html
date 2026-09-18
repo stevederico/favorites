@@ -27,18 +27,8 @@
 
     <!-- dottie-analytics — parallel with Umami during migration -->
     <script defer src="https://api.dottie.ai/script.js" data-website-id="ad9b2b5e8bb86d34129ae24d0e711980" data-domains="favs.bixbyapps.com"></script>
-    <!-- Prevent dark mode flash -->
-    <script>
-      (function() {
-        const savedTheme = localStorage.getItem('theme');
-        const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        const isDark = savedTheme ? savedTheme === 'dark' : systemPrefersDark;
-
-        if (isDark) {
-          document.documentElement.classList.add('dark');
-        }
-      })();
-    </script>
+    <!-- Prevent dark mode flash. Classic script so CSP script-src 'self' allows it. -->
+    <script src="/theme-init.js"></script>
 
     <style>
       body { background: oklch(0.985 0 0); }

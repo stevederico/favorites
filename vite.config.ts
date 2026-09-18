@@ -33,7 +33,15 @@ export default defineConfig({
     // skateboard-ui is excluded from prebundling, so its raw imports resolve straight to
     // these packages — every one it reaches for must be pre-converted to ESM, including
     // react/jsx-runtime (its compiled JSX imports it and React ships CJS).
-    include: ['react', 'react-dom', 'react-dom/client', 'react/jsx-runtime', 'react-router'],
+    include: [
+      'react',
+      'react-dom',
+      'react-dom/client',
+      'react/jsx-runtime',
+      'react-router',
+      'cookie',
+      'set-cookie-parser'
+    ],
     // skateboard-ui ships pre-built ESM; the native/CSS toolchain must never be prebundled.
     exclude: ['@stevederico/skateboard-ui', 'lightningcss', 'fsevents']
   },

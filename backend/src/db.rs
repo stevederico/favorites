@@ -158,7 +158,7 @@ impl std::error::Error for DbError {}
 
 impl DbError {
     /// Build a local (non-driver) error, e.g. a bad path or a closed pool.
-    fn local(message: impl Into<String>) -> DbError {
+    pub(crate) fn local(message: impl Into<String>) -> DbError {
         DbError {
             code: ffi::SQLITE_MISUSE,
             message: message.into(),
@@ -205,6 +205,11 @@ impl Row {
             .map(|(_, value)| value)
     }
 
+    /// Build a row from `(name, value)` pairs. Used by the libSQL HTTP decoder.
+    pub(crate) fn from_cells(cells: Vec<(String, Value)>) -> Row {
+        Row { cells }
+    }
+
     /// Borrow a column as `&str`. `None` unless the column exists and is text.
     pub fn text(&self, col: &str) -> Option<&str> {
         match self.get(col) {
@@ -231,15 +236,15 @@ pub struct Changes {
     pub last_insert_rowid: i64,
 }
 
-/// An open SQLite connection.
-///
-/// Opened with `SQLITE_OPEN_FULLMUTEX` (serialized threading mode), so the
-/// handle is safe to move between threads — which is what [`Pool`] does when it
-/// hands a connection to a worker. The pool still gives each caller exclusive
-/// use, so the serialization mutex is never actually contended; FULLMUTEX buys
-/// a sound `Send` impl rather than throughput.
+/// File SQLite or HTTP libSQL.
+enum Engine {
+    Sqlite(*mut ffi::Sqlite3),
+    Libsql(crate::libsql::Client),
+}
+
+/// An open SQLite connection, or an HTTP libSQL client for `DB_TYPE=libsql`.
 pub struct Db {
-    handle: *mut ffi::Sqlite3,
+    engine: Engine,
 }
 
 // SAFETY: the handle is opened with SQLITE_OPEN_FULLMUTEX, so libsqlite3
@@ -250,12 +255,10 @@ unsafe impl Send for Db {}
 
 impl Drop for Db {
     fn drop(&mut self) {
-        // SAFETY: `handle` came from a successful sqlite3_open_v2 and has not
-        // been closed before (Drop runs once). sqlite3_close_v2 tolerates
-        // outstanding statements, and this type finalizes every statement it
-        // prepares before returning, so none are outstanding.
-        unsafe {
-            ffi::sqlite3_close_v2(self.handle);
+        if let Engine::Sqlite(handle) = self.engine {
+            unsafe {
+                ffi::sqlite3_close_v2(handle);
+            }
         }
     }
 }
@@ -305,7 +308,9 @@ impl Db {
                 message: format!("sqlite3_open_v2 could not allocate a handle for {path}"),
             });
         }
-        let db = Db { handle };
+        let db = Db {
+            engine: Engine::Sqlite(handle),
+        };
         if rc != ffi::SQLITE_OK {
             // Read the message off the handle before `db` drops and closes it.
             return Err(db.last_error(rc));
@@ -313,9 +318,23 @@ impl Db {
 
         // SAFETY: `handle` is a live connection just returned by open_v2.
         unsafe {
-            ffi::sqlite3_busy_timeout(db.handle, BUSY_TIMEOUT_MS);
+            ffi::sqlite3_busy_timeout(handle, BUSY_TIMEOUT_MS);
         }
         Ok(db)
+    }
+
+    /// HTTP libSQL client for the shared `sqlite-shared` server.
+    pub fn libsql(client: crate::libsql::Client) -> Db {
+        Db {
+            engine: Engine::Libsql(client),
+        }
+    }
+
+    fn sqlite(&self) -> Result<*mut ffi::Sqlite3, DbError> {
+        match self.engine {
+            Engine::Sqlite(h) => Ok(h),
+            Engine::Libsql(_) => Err(DbError::local("internal: sqlite handle used on libsql engine")),
+        }
     }
 
     /// Run one or more statements with no parameters and no result rows.
@@ -323,6 +342,10 @@ impl Db {
     /// # Errors
     /// Returns [`DbError`] carrying the driver message on failure.
     pub fn exec(&self, sql: &str) -> Result<(), DbError> {
+        if let Engine::Libsql(c) = &self.engine {
+            return c.exec(sql);
+        }
+        let handle = self.sqlite()?;
         let text =
             CString::new(sql).map_err(|_| DbError::local("SQL contains an interior NUL byte"))?;
 
@@ -331,7 +354,7 @@ impl Db {
         // nothing for us to free — the message is read from the handle instead.
         let rc = unsafe {
             ffi::sqlite3_exec(
-                self.handle,
+                handle,
                 text.as_ptr(),
                 None,
                 std::ptr::null_mut(),
@@ -350,6 +373,9 @@ impl Db {
     /// # Errors
     /// Returns [`DbError`] when the statement fails to prepare, bind, or step.
     pub fn query(&self, sql: &str, params: &[Value]) -> Result<Vec<Row>, DbError> {
+        if let Engine::Libsql(c) = &self.engine {
+            return c.query(sql, params);
+        }
         let stmt = self.prepare(sql)?;
         self.bind(&stmt, params)?;
 
@@ -385,6 +411,9 @@ impl Db {
     /// Returns [`DbError`] carrying the driver message — including
     /// `"UNIQUE constraint failed: ..."`, which the signup route matches on.
     pub fn run(&self, sql: &str, params: &[Value]) -> Result<Changes, DbError> {
+        if let Engine::Libsql(c) = &self.engine {
+            return c.run(sql, params);
+        }
         let stmt = self.prepare(sql)?;
         self.bind(&stmt, params)?;
         loop {
@@ -400,10 +429,11 @@ impl Db {
         }
 
         // SAFETY: `handle` is live; both calls only read counters off it.
+        let handle = self.sqlite()?;
         let changes = unsafe {
             Changes {
-                changes: i64::from(ffi::sqlite3_changes(self.handle)),
-                last_insert_rowid: ffi::sqlite3_last_insert_rowid(self.handle),
+                changes: i64::from(ffi::sqlite3_changes(handle)),
+                last_insert_rowid: ffi::sqlite3_last_insert_rowid(handle),
             }
         };
         Ok(changes)
@@ -422,9 +452,10 @@ impl Db {
         // required); `ptr` and `tail` are valid out-pointers. On success
         // `tail` points into `bytes`, just past the statement that was
         // compiled.
+        let handle = self.sqlite()?;
         let rc = unsafe {
             ffi::sqlite3_prepare_v2(
-                self.handle,
+                handle,
                 bytes.as_ptr().cast::<c_char>(),
                 len,
                 &mut ptr,
@@ -491,9 +522,13 @@ impl Db {
         // SAFETY: `handle` is live. sqlite3_errmsg returns a NUL-terminated
         // UTF-8 string owned by SQLite and valid until the next call on this
         // handle; it is copied into an owned String before returning.
+        let handle = match self.sqlite() {
+            Ok(h) => h,
+            Err(e) => return e,
+        };
         unsafe {
-            let extended = ffi::sqlite3_extended_errcode(self.handle);
-            let msg = ffi::sqlite3_errmsg(self.handle);
+            let extended = ffi::sqlite3_extended_errcode(handle);
+            let msg = ffi::sqlite3_errmsg(handle);
             let message = if msg.is_null() {
                 String::new()
             } else {
@@ -639,6 +674,26 @@ impl Pool {
             idle.push(db);
         }
 
+        Ok(Pool {
+            state: Mutex::new(PoolState {
+                idle,
+                closed: false,
+            }),
+            available: Condvar::new(),
+        })
+    }
+
+    /// HTTP pool against shared libSQL (`DB_TYPE=libsql`).
+    pub fn open_libsql(url: &str, namespace: &str, size: usize) -> Result<Pool, DbError> {
+        let count = size.max(1);
+        let mut idle = Vec::with_capacity(count);
+        for index in 0..count {
+            let db = Db::libsql(crate::libsql::Client::new(url, namespace));
+            if index == 0 {
+                ensure_schema(&db)?;
+            }
+            idle.push(db);
+        }
         Ok(Pool {
             state: Mutex::new(PoolState {
                 idle,
