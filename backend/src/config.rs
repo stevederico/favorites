@@ -14,12 +14,13 @@ use crate::json::{self, Json};
 
 // ==== ENVIRONMENT ====
 
-/// True when `NODE_ENV` is exactly `production`.
+/// True when the process is running in production.
 ///
-/// Matches `isProd()` in `lib/env.ts`: any other value — including unset — is
-/// treated as development.
+/// `NODE_ENV=production` is the skateboard default. This app's Railway
+/// service historically set `ENV=production` instead, so both count.
 pub fn is_prod() -> bool {
-    std::env::var("NODE_ENV").as_deref() == Ok("production")
+    matches!(std::env::var("NODE_ENV").as_deref(), Ok("production"))
+        || matches!(std::env::var("ENV").as_deref(), Ok("production"))
 }
 
 /// Read an environment variable, treating an unset variable as `None`.
@@ -208,7 +209,7 @@ pub fn resolve_env_placeholders(input: &str, log: &Logger) -> String {
 pub struct DatabaseConfig {
     /// Logical database name, used as the connection cache key.
     pub db: String,
-    /// Adapter selector. Only `sqlite` is supported by this backend.
+    /// Adapter selector. `sqlite` (local file) or `libsql` (shared sqld).
     pub db_type: String,
     /// SQLite file path, after `${VAR}` expansion.
     pub connection_string: String,
@@ -289,7 +290,7 @@ pub fn load_config(dir: &Path, log: &Logger) -> BackendConfig {
             .to_string(),
         database: DatabaseConfig {
             db: db.to_string(),
-            db_type: db_type.to_string(),
+            db_type: env_nonempty("DB_TYPE").unwrap_or_else(|| db_type.to_string()),
             connection_string: resolve_env_placeholders(conn, log),
         },
     }

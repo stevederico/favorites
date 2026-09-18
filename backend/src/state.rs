@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 
 use crate::config::{self, BackendConfig, Logger};
 use crate::db::Pool;
+use crate::json;
 use crate::http;
 use crate::stores::{CsrfStore, LockoutStore, RateLimitStore};
 use crate::stripe::StripeClient;
@@ -134,21 +135,41 @@ impl AppState {
         if prod {
             config::check_prod_jwt_secret(config::env_nonempty("JWT_SECRET").as_deref())?;
         }
-        if cfg.database.db_type != "sqlite" {
-            return Err(format!(
-                "sqlite-only backend; database.dbType is '{}'",
-                cfg.database.db_type
-            ));
-        }
-
-        let conn = PathBuf::from(&cfg.database.connection_string);
-        let db_path = if conn.is_absolute() {
-            conn
-        } else {
-            dir.join(conn)
+        let pool = match cfg.database.db_type.to_ascii_lowercase().as_str() {
+            "sqlite" => {
+                let conn = PathBuf::from(&cfg.database.connection_string);
+                let db_path = if conn.is_absolute() {
+                    conn
+                } else {
+                    dir.join(conn)
+                };
+                Pool::open(&db_path.to_string_lossy(), pool_size)
+                    .map_err(|e| format!("failed to open sqlite at {}: {e}", db_path.display()))?
+            }
+            "libsql" | "turso" => {
+                let url = config::env_nonempty("LIBSQL_URL").ok_or_else(|| {
+                    "LIBSQL_URL is required when DB_TYPE=libsql".to_string()
+                })?;
+                if let Some(admin) = config::env_nonempty("LIBSQL_ADMIN_URL") {
+                    crate::libsql::Client::ensure_namespace(&admin, &cfg.database.db)
+                        .map_err(|e| format!("libsql namespace: {e}"))?;
+                }
+                log.info(
+                    "Opening libSQL",
+                    &[
+                        ("namespace", json::s(cfg.database.db.clone())),
+                        ("url", json::s(url.clone())),
+                    ],
+                );
+                Pool::open_libsql(&url, &cfg.database.db, pool_size)
+                    .map_err(|e| format!("failed to open libsql: {e}"))?
+            }
+            other => {
+                return Err(format!(
+                    "unsupported database.dbType '{other}' (sqlite or libsql)"
+                ));
+            }
         };
-        let pool = Pool::open(&db_path.to_string_lossy(), pool_size)
-            .map_err(|e| format!("failed to open sqlite at {}: {e}", db_path.display()))?;
 
         if config::env_nonempty("STRIPE_KEY").is_none() {
             log.warn("STRIPE_KEY not set - Stripe functionality disabled", &[]);

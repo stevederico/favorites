@@ -1802,6 +1802,8 @@ mod tests {
             std::env::remove_var("STRIPE_ENDPOINT_SECRET");
             std::env::remove_var("PORT");
             std::env::remove_var("NODE_ENV");
+            std::env::remove_var("DB_TYPE");
+            std::env::remove_var("LIBSQL_URL");
         }
         let state = AppState::open_in(&dir, 2, Logger::new(true)).expect("open");
         (state, dir)

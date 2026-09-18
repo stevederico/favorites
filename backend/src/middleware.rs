@@ -55,11 +55,11 @@ pub fn preflight(req: &Request, allowed: &[String]) -> Response {
 /// Kept as one literal rather than rebuilt from a map: the directive order is
 /// part of the header bytes, and there is exactly one policy.
 const CSP: &str = "default-src 'self'; \
-script-src 'self'; \
+script-src 'self' https://aob.bixbyapps.com https://api.dottie.ai https://static.cloudflareinsights.com; \
 style-src 'self' 'unsafe-inline'; \
 img-src 'self' https:; \
 font-src 'self'; \
-connect-src 'self'; \
+connect-src 'self' https://aob.bixbyapps.com https://api.dottie.ai https://cloudflareinsights.com; \
 frame-ancestors 'none'";
 
 /// Permissions-Policy value: every listed feature disabled.
@@ -230,7 +230,7 @@ mod tests {
         let res = apply_secure_headers(Response::empty(200), false);
         assert_eq!(
             header(&res, "Content-Security-Policy"),
-            Some("default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'")
+            Some("default-src 'self'; script-src 'self' https://aob.bixbyapps.com https://api.dottie.ai https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' https:; font-src 'self'; connect-src 'self' https://aob.bixbyapps.com https://api.dottie.ai https://cloudflareinsights.com; frame-ancestors 'none'")
         );
     }
 
