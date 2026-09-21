@@ -1,5 +1,10 @@
 ## CHANGELOG
 
+0.15.0
+
+  Remove profiles endpoint
+  Remove Stripe billing
+
 0.14.0
 
   Rename package to favorites

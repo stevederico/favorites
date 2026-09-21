@@ -7,7 +7,6 @@ use crate::db::Pool;
 use crate::json;
 use crate::http;
 use crate::stores::{CsrfStore, LockoutStore, RateLimitStore};
-use crate::stripe::StripeClient;
 use crate::stripe_worker::StripeWorker;
 
 /// Everything a request handler needs, shared across worker threads.
@@ -27,7 +26,7 @@ pub struct AppState {
     pub lockout: LockoutStore,
     /// Per-IP sliding window on signup/signin.
     pub auth_rate: RateLimitStore,
-    /// Stripe worker handle, or `None` when `STRIPE_KEY` is unset (routes 503).
+    /// Unused. Billing routes are not registered.
     pub stripe: Option<StripeWorker>,
     /// Sellable `lookup_key`s from `src/constants.json` `stripeProducts`.
     pub stripe_lookup_keys: Vec<String>,
@@ -171,9 +170,6 @@ impl AppState {
             }
         };
 
-        if config::env_nonempty("STRIPE_KEY").is_none() {
-            log.warn("STRIPE_KEY not set - Stripe functionality disabled", &[]);
-        }
         log.info("Single-client backend initialized", &[]);
 
         let static_dir = dir.join(&cfg.static_dir);
@@ -184,11 +180,9 @@ impl AppState {
             csrf: CsrfStore::new(),
             lockout: LockoutStore::new(),
             auth_rate: RateLimitStore::new(),
-            stripe: config::env_nonempty("STRIPE_KEY")
-                .map(StripeClient::new)
-                .map(StripeWorker::spawn),
+            stripe: None,
             stripe_lookup_keys: config::load_stripe_lookup_keys(dir),
-            stripe_endpoint_secret: config::env_nonempty("STRIPE_ENDPOINT_SECRET"),
+            stripe_endpoint_secret: None,
             jwt_secret: config::env_nonempty("JWT_SECRET"),
             cors_origins: AppState::resolve_cors_origins(),
             static_dir,

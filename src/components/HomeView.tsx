@@ -4,21 +4,14 @@ import type { ChangeEvent } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { useFavorites } from '../contexts/FavoritesContext';
 import type { SearchResult } from '../contexts/FavoritesContext';
-import { Search, MapPin, Heart, User, Clock, CircleUser } from 'lucide-react';
-import { getBackendURL, timestampToString } from '@stevederico/skateboard-ui/Utilities';
+import { Search, MapPin, Heart, User, Clock } from 'lucide-react';
+import { timestampToString } from '@stevederico/skateboard-ui/Utilities';
 import { getState } from '@stevederico/skateboard-ui/Context';
-
-/** A user profile returned by the /profiles endpoint. */
-interface Profile {
-  _id: string;
-  name: string;
-  [key: string]: unknown;
-}
 
 /**
  * HomeView Component
  * Main component for the application's home screen
- * Displays search functionality, favorites, and user profiles
+ * Displays search and favorites
  */
 export default function HomeView() {
   const { favorites, getFavorites, removeFavorite, addFavorite, searchLocations, isInFavorites } = useFavorites();
@@ -27,7 +20,6 @@ export default function HomeView() {
   const [searchQuery, setSearchQuery] = useState(''); // Current search input
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]); // Search result locations
   const [isSearching, setIsSearching] = useState(false); // Loading state for search
-  const [profiles, setProfiles] = useState<Profile[]>([]); // List of all user profiles
   const { state } = getState();
 
   // Navigation and routing
@@ -73,30 +65,6 @@ export default function HomeView() {
     }, 300);
     return () => clearTimeout(timeoutId);
   }, [searchQuery, debouncedSearch]);
-
-  // Fetch user profiles
-  useEffect(() => {
-    const fetchProfiles = async () => {
-      try {
-        // API call to get profiles with authentication
-        const response = await fetch(`${getBackendURL()}/profiles`, {
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        })
-        const data = await response.json();
-        // Handle both array response and object with profiles property
-        setProfiles(Array.isArray(data) ? data : (data.profiles || []));
-      } catch (error) {
-        console.error('Error fetching profiles:', error);
-        setProfiles([]); // Ensure profiles remains an array on error
-      }
-    };
-    fetchProfiles();
-  }, []);
-
-
 
   /**
    * Handle search input changes
@@ -223,30 +191,6 @@ export default function HomeView() {
             </div>
           </div>
 
-          {/* Profiles Grid Section - Shows available user profiles */}
-          <div data-section-id="profiles-grid" className="mb-8">
-            <div className="flex items-center gap-3 mb-6">
-              <CircleUser size={24} className="text-blue-500" />
-              <h2 className="text-xl font-bold">Profiles</h2>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {profiles.map(profile => (
-                <Link
-                  key={profile._id}
-                  to={`/app/map/${profile.name.toLowerCase()}`}
-                  data-umami-event="profile-clicked"
-                  className="bg-accent rounded-xl shadow-md p-6 hover:shadow-lg transition-all cursor-pointer"
-                >
-                  <div className="flex items-center gap-4">
-                    <CircleUser size={40} className="text-blue-500" />
-                    <div>
-                      <h3 className="font-semibold text-lg capitalize">{profile.name}</h3>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </div>
         </>
       )}
     </div>

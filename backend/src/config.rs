@@ -327,12 +327,6 @@ pub fn load_stripe_lookup_keys(backend_dir: &Path) -> Vec<String> {
 /// port matches that. Returns whether everything required was present.
 pub fn validate_environment(config: &BackendConfig, log: &Logger) -> bool {
     let mut missing: Vec<Json> = Vec::new();
-    if env_nonempty("STRIPE_KEY").is_none() {
-        missing.push(Json::Str("STRIPE_KEY".into()));
-    }
-    if env_nonempty("STRIPE_ENDPOINT_SECRET").is_none() {
-        missing.push(Json::Str("STRIPE_ENDPOINT_SECRET".into()));
-    }
     if env_nonempty("JWT_SECRET").is_none() {
         missing.push(Json::Str("JWT_SECRET".into()));
     }
@@ -357,7 +351,7 @@ pub fn validate_environment(config: &BackendConfig, log: &Logger) -> bool {
             (
                 "hint",
                 Json::Str(
-                    "See backend/.env.example; STRIPE_KEY and JWT_SECRET are needed for payments and auth"
+                    "See backend/.env.example; JWT_SECRET is needed for auth"
                         .into(),
                 ),
             ),
