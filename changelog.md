@@ -1,5 +1,10 @@
 ## CHANGELOG
 
+0.11.0
+
+  Drop personal map url from changelog
+  Retarget security policy
+
 0.10.0
 
   Drop Railway link from README
@@ -99,7 +104,7 @@
 0.1.4
 
   Added metaTags
-  Fixed map urls /app/map/steve
+  Fixed map profile urls
   Start location from first favorite
 
 0.1.3

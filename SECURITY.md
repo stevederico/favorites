@@ -13,15 +13,8 @@ mitigation for confirmed issues in the next patch release when practical.
 
 ## Scope
 
-This policy covers the skateboard template repositories:
-
-- [stevederico/skateboard](https://github.com/stevederico/skateboard) (this boilerplate)
-- [@stevederico/skateboard-ui](https://github.com/stevederico/skateboard-ui)
-
-Apps you build from the template are your responsibility to secure and patch.
+This policy covers [stevederico/BXFav](https://github.com/stevederico/BXFav).
 
 ## Supported versions
 
-Only the latest release line of skateboard and skateboard-ui receives security
-fixes. Upgrade via [docs/UPGRADE.md](docs/UPGRADE.md) and the migration
-checklist in [AGENTS.md](AGENTS.md#migrating-4x-50-exact-checklist).
+Only the latest release of this app receives security fixes. Upgrade notes are in [docs/UPGRADE.md](docs/UPGRADE.md) and the checklist in [AGENTS.md](AGENTS.md#migrating-4x-50-exact-checklist).
