@@ -45,8 +45,8 @@ Favorites:
 |--------|------|------|------|
 | GET | `/api/favorites?uid=` or `?username=` | no | List non-deleted favorites. Unknown username returns `[]` |
 | POST | `/api/favorites` | cookie + CSRF | Body needs `title` and `coordinates` (`lat`, `lon`). Optional `address`, `notes`, `placeID`, `details` |
-| PUT | `/api/favorites` | cookie + CSRF | Update one favorite owned by the caller |
-| DELETE | `/api/favorites` | cookie + CSRF | Soft-delete (`deleted = 1`) |
+| PUT | `/api/favorites` | cookie + CSRF | Body needs `_id`. Optional `notes`, `placeID`, `coordinates`, `title`, `address`, `details`. Caller must own the row |
+| DELETE | `/api/favorites` | cookie + CSRF | Body needs `_id`. Soft-delete (`deleted = 1`) |
 | GET | `/api/profiles` | no | `{ _id, name }` for every user |
 
 `GET /api/favorites` is public. Profiles and favorite lists are readable without a cookie.

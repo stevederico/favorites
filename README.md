@@ -2,7 +2,7 @@
 
 Favorites and places tracking with interactive maps.
 
-**Version:** 0.12.0 | **Domain:** [favs.bixbyapps.com](https://favs.bixbyapps.com)
+**Version:** 0.13.0 | **Domain:** [favs.bixbyapps.com](https://favs.bixbyapps.com)
 
 ## Tech Stack
 

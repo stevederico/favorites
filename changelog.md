@@ -1,5 +1,9 @@
 ## CHANGELOG
 
+0.13.0
+
+  Document favorite update and delete body
+
 0.12.0
 
   Replace skateboard guide with app docs
