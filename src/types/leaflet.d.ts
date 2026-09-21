@@ -54,3 +54,9 @@ declare module 'leaflet' {
   export function tileLayer(urlTemplate: string, options?: Record<string, unknown>): { addTo(map: LeafletMap): unknown };
   export function marker(latlng: [number, number], options?: Record<string, unknown>): Marker;
 }
+
+/** Vite `?no-inline` keeps Leaflet PNGs as files so CSP `img-src 'self'` can load them. */
+declare module '*.png?no-inline' {
+  const src: string;
+  export default src;
+}

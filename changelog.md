@@ -1,5 +1,9 @@
 ## CHANGELOG
 
+0.16.0
+
+  Fix marker icons
+
 0.15.0
 
   Remove profiles endpoint

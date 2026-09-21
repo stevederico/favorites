@@ -11,9 +11,9 @@ import { trackEvent } from '../utils/analytics';
 import * as L from 'leaflet';
 import type { LeafletMap } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import iconRetina from 'leaflet/dist/images/marker-icon-2x.png';
-import icon from 'leaflet/dist/images/marker-icon.png';
-import shadow from 'leaflet/dist/images/marker-shadow.png';
+import iconRetina from 'leaflet/dist/images/marker-icon-2x.png?no-inline';
+import icon from 'leaflet/dist/images/marker-icon.png?no-inline';
+import shadow from 'leaflet/dist/images/marker-shadow.png?no-inline';
 
 delete L.Icon.Default.prototype._getIconUrl;
 
