@@ -1,5 +1,9 @@
 ## CHANGELOG
 
+0.14.0
+
+  Rename package to favorites
+
 0.13.0
 
   Document favorite update and delete body
