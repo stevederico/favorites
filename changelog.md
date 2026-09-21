@@ -1,5 +1,9 @@
 ## CHANGELOG
 
+0.18.0
+
+  Fix README tech stack
+
 0.17.0
 
   Update app docs
