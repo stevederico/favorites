@@ -1,6 +1,6 @@
-# BXFav
+# Favs
 
-Favorites and shared maps. Live site: [favs.bixbyapps.com](https://favs.bixbyapps.com).
+Favorites and shared maps. Live site: [favs.bixbyapps.com](https://favs.bixbyapps.com). Package name is `favorites`. The SQLite namespace stays `BXFav`.
 
 Skateboard 5.6. React and Vite on `:5173` (`npm run start`). Zero-crate Rust backend on `:8000` (`cd backend && cargo run`). Production is one `skateboard-backend` process serving `/api` and `dist/`.
 
@@ -10,7 +10,9 @@ Maps use Leaflet. Calculators do not apply. Places are rows in SQLite, not a bun
 
 ## Database
 
-SQLite only, through system `libsqlite3`. Path in `backend/config.json`: `./databases/BXFav.db`. Postgres and MongoDB are not supported.
+Default is a SQLite file, through system `libsqlite3`. Path in `backend/config.json`: `./databases/BXFav.db`. Postgres and MongoDB are not supported.
+
+`DB_TYPE=libsql` or `turso` overrides that file. `LIBSQL_URL` is required. `LIBSQL_ADMIN_URL`, when set, ensures the namespace named in `database.db` (`BXFav`).
 
 App table, from `BXFAV_SCHEMA` in `backend/src/db.rs`:
 
@@ -50,6 +52,8 @@ Favorites:
 
 `GET /api/favorites` is public when the caller knows a user id or username. There is no endpoint that lists users.
 
+Leaflet marker PNGs are imported with `?no-inline` in `src/components/MapView.tsx`. Vite would otherwise inline them as `data:` URLs, and the production Content Security Policy (`img-src 'self' https:`) would refuse to paint them.
+
 ## Deploy
 
 `Dockerfile` builds the frontend with Node 24, the backend with Rust, and runs `skateboard-backend` on port 8000. Health check: `GET /api/health`.
@@ -58,9 +62,9 @@ Do not put a `.env` file in the image. Set variables on the host.
 
 Boot requires `JWT_SECRET` (32+ characters in production). `FRONTEND_URL` is optional. `FREE_USAGE_LIMIT` defaults to 20 per 30-day window, not a calendar month. `PORT` defaults to 8000.
 
-No checkout, billing portal, or payment webhook.
+No checkout, billing portal, or payment webhook. `stripeProducts` in `src/constants.json` is empty. `/app/payment` is still a skateboard page; the API returns 404.
 
-Keep the SQLite file on a persistent volume. The filename stays `BXFav.db`.
+A local SQLite file needs a persistent path. Production that sets `DB_TYPE=libsql` does not use `./databases/BXFav.db`. Do not rename the namespace.
 
 ## Upgrades
 

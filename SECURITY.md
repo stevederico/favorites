@@ -13,7 +13,7 @@ mitigation for confirmed issues in the next patch release when practical.
 
 ## Scope
 
-This policy covers [stevederico/BXFav](https://github.com/stevederico/BXFav).
+This policy covers [stevederico/favorites](https://github.com/stevederico/favorites).
 
 ## Supported versions
 

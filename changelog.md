@@ -1,5 +1,9 @@
 ## CHANGELOG
 
+0.17.0
+
+  Update app docs
+
 0.16.0
 
   Fix marker icons
