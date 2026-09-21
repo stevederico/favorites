@@ -2,20 +2,18 @@
 
 Save places and show them on a map. Live site: [favs.bixbyapps.com](https://favs.bixbyapps.com).
 
-**Version:** 0.18.0
+**Version:** 0.19.0
 
 ## Tech stack
 
 From `package.json` and `backend/Cargo.toml`:
 
-- React 19.2, Vite 8.2, Tailwind CSS 4.3, TypeScript 7, Node 24
+- React 19.2, Vite 8.2, Tailwind CSS 4.3, TypeScript 7
 - `@stevederico/skateboard-ui` 5.1.0, skateboard 5.6.0
 - Leaflet 1.9, `lucide-react` 0.546, React Router 7.18
 - Zero-crate Rust backend. `rust-version` is 1.95 (minimum). `backend/rust-toolchain.toml` is `stable`, and the Docker image is `rust:bookworm`, so the compiler is current stable, not 1.95.
 - Local database: SQLite through system `libsqlite3` (`./databases/BXFav.db`)
 - Production database: libSQL. `DB_TYPE=libsql` plus `LIBSQL_URL`. HTTP goes through system `libcurl`. Namespace stays `BXFav`
-
-No Postgres, no MongoDB, no Hono, no Deno. Checkout, portal, and the payment webhook are not registered.
 
 ## Setup
 

@@ -1,5 +1,9 @@
 ## CHANGELOG
 
+0.19.0
+
+  Drop unused stack lines
+
 0.18.0
 
   Fix README tech stack
