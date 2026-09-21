@@ -1,5 +1,9 @@
 ## CHANGELOG
 
+0.12.0
+
+  Replace skateboard guide with app docs
+
 0.11.0
 
   Drop personal map url from changelog
