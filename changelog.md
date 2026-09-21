@@ -1,5 +1,9 @@
 ## CHANGELOG
 
+0.10.0
+
+  Drop Railway link from README
+
 0.9.0
 
   Migrate to skateboard 5.6.0 Rust backend

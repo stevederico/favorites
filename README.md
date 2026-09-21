@@ -2,7 +2,7 @@
 
 Favorites and places tracking with interactive maps.
 
-**Version:** 0.9.0 | **Domain:** [favs.bixbyapps.com](https://favs.bixbyapps.com) | **Railway Service:** `bxfav`
+**Version:** 0.10.0 | **Domain:** [favs.bixbyapps.com](https://favs.bixbyapps.com)
 
 ## Tech Stack
 
@@ -33,10 +33,7 @@ cd backend && cargo run   # Backend :8000
 
 ## Deploy
 
-```bash
-railway link -p bixby -e production -s bxfav
-railway up
-```
+Production is the Docker image in `Dockerfile`.
 
 ---
 
