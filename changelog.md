@@ -1,3 +1,7 @@
+0.20.0
+
+  Drop dottie-analytics
+
 ## CHANGELOG
 
 0.19.0
