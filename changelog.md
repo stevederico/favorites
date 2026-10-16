@@ -1,3 +1,7 @@
+0.21.0
+
+  Drop aob from CSP
+
 0.20.0
 
   Drop dottie-analytics
