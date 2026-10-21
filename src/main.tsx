@@ -22,7 +22,6 @@ import { createSkateboardApp } from '@stevederico/skateboard-ui/App';
 import type { AppRoute } from '@stevederico/skateboard-ui/App';
 import Layout from '@stevederico/skateboard-ui/Layout';
 import { FavoritesProvider } from './contexts/FavoritesContext';
-import AnalyticsProvider from './components/AnalyticsProvider';
 import CommandMenu from './components/CommandMenu';
 import constants from './constants.json';
 import HomeView from './components/HomeView';
@@ -66,17 +65,14 @@ interface AppWrapperProps {
 }
 
 /**
- * Custom wrapper composing AnalyticsProvider and FavoritesProvider
- * AnalyticsProvider handles page views, user identification, and passive tracking.
+ * Custom wrapper providing FavoritesProvider
  * FavoritesProvider provides favorites context to all routes.
  *
  * @param props - Wrapper props
  * @param props.children - Child components (Router + App)
  */
 const AppWrapper = ({ children }: AppWrapperProps) => (
-  <AnalyticsProvider>
-    <FavoritesProvider>{children}</FavoritesProvider>
-  </AnalyticsProvider>
+  <FavoritesProvider>{children}</FavoritesProvider>
 );
 
 /**

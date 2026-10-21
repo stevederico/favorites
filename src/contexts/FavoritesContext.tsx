@@ -3,7 +3,6 @@ import type { ReactNode } from 'react';
 import { getBackendURL, getCSRFToken } from '@stevederico/skateboard-ui/Utilities';
 import { getState } from '@stevederico/skateboard-ui/Context';
 import type { User } from '@stevederico/skateboard-ui';
-import { trackEvent } from '../utils/analytics';
 
 /** Geographic coordinates for a place. */
 export interface Coordinates {
@@ -130,11 +129,9 @@ export function FavoritesProvider({ children }: FavoritesProviderProps) {
       });
       const newFavorite = await response.json();
       setFavorites([...favorites, newFavorite]);
-      trackEvent('favorite-added', { title: location.title });
       return newFavorite;
     } catch (error) {
       console.error('Error adding favorite:', error);
-      trackEvent('favorite-add-failed', { error: error instanceof Error ? error.message : String(error) });
       return null;
     }
   }
@@ -153,13 +150,11 @@ export function FavoritesProvider({ children }: FavoritesProviderProps) {
       });
       if (response.ok) {
         setFavorites(favorites.filter(f => f._id !== _id));
-        trackEvent('favorite-removed');
         return true;
       }
       return false;
     } catch (error) {
       console.error('Error removing favorite:', error);
-      trackEvent('favorite-remove-failed', { error: error instanceof Error ? error.message : String(error) });
       return false;
     }
   }
@@ -178,11 +173,9 @@ export function FavoritesProvider({ children }: FavoritesProviderProps) {
       });
       const updatedFavorite = await response.json();
       setFavorites(favorites.map(f => f._id === _id ? updatedFavorite : f));
-      trackEvent('favorite-updated', { hasNotes: !!updates.notes });
       return updatedFavorite;
     } catch (error) {
       console.error('Error updating favorite:', error);
-      trackEvent('favorite-update-failed', { error: error instanceof Error ? error.message : String(error) });
       return null;
     }
   }
@@ -192,7 +185,6 @@ export function FavoritesProvider({ children }: FavoritesProviderProps) {
     const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&addressdetails=1&limit=10&extratags=1`);
     const data: unknown = await response.json();
     if (!Array.isArray(data)) return [];
-    trackEvent('location-searched', { resultsCount: data.length });
     return data.flatMap((item): SearchResult[] => {
         if (!item || typeof item !== 'object') return [];
         const name = 'name' in item && typeof item.name === 'string' ? item.name : '';

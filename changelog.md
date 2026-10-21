@@ -1,3 +1,7 @@
+0.22.0
+
+  Drop analytics code
+
 0.21.0
 
   Drop aob from CSP

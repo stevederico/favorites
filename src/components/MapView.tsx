@@ -6,7 +6,6 @@ import { createRoot } from 'react-dom/client';
 import { getState } from '@stevederico/skateboard-ui/Context';
 import { useFavorites } from '../contexts/FavoritesContext';
 import type { Coordinates, Favorite, SearchResult } from '../contexts/FavoritesContext';
-import { trackEvent } from '../utils/analytics';
 
 import * as L from 'leaflet';
 import type { LeafletMap } from 'leaflet';
@@ -211,7 +210,6 @@ export default function MapView() {
   const handleResultClick = (result: SearchResult) => {
     setSearchQuery('');
     setSearchResults([]);
-    trackEvent('search-result-clicked', { title: result.title });
 
     const map = mapInstanceRef.current;
     if (!map) return;
@@ -366,13 +364,12 @@ export default function MapView() {
   return (
     <div className="w-screen h-screen relative flex flex-col">
       <div className="w-full absolute top-4 z-[1000]  px-2 pt-2">
-        <div data-section-id="map-search" className="relative md:w-[calc(100vw-190px)] max-w-full mx-2">
+        <div className="relative md:w-[calc(100vw-190px)] max-w-full mx-2">
           <input
             type="text"
             value={searchQuery}
             onChange={handleSearchInput}
             placeholder="Search places..."
-            data-umami-event="map-search-input-focused"
             className="w-full pl-4 pr-12 py-3 rounded-xl bg-accent shadow-lg border border-gray-300 focus:outline-none focus:ring-2"
           />
           <Search className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
@@ -387,7 +384,6 @@ export default function MapView() {
                   <button
                     key={index}
                     onClick={() => handleResultClick(result)}
-                    data-umami-event="map-search-result-clicked"
                     className="w-full p-3 flex items-center gap-3 hover:bg-background transition-colors border-b last:border-b-0 border-gray-300"
                   >
                     <MapPin size={16} className="flex-shrink-0" />
