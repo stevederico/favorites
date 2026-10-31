@@ -60,23 +60,33 @@ impl Client {
 
     /// Run SQL with no result rows.
     pub fn exec(&self, sql: &str) -> Result<(), DbError> {
-        self.pipeline(sql, &[], false).map(|_| ())
+        self.pipeline(sql, &[]).map(|_| ())
     }
 
     /// Run a parameterized query and collect rows.
     pub fn query(&self, sql: &str, params: &[Value]) -> Result<Vec<Row>, DbError> {
-        self.pipeline(sql, params, false).map(|out| out.rows)
+        self.pipeline(sql, params).map(|out| out.rows)
     }
 
     /// Run a parameterized write and report rows touched.
     pub fn run(&self, sql: &str, params: &[Value]) -> Result<Changes, DbError> {
-        self.pipeline(sql, params, false).map(|out| out.changes)
+        self.pipeline(sql, params).map(|out| out.changes)
     }
 
-    fn pipeline(&self, sql: &str, params: &[Value], keep_open: bool) -> Result<ExecOut, DbError> {
+    /// Send one statement over Hrana HTTP.
+    ///
+    /// Outside a transaction every statement is its own stream (sent with a
+    /// `close`). A `BEGIN` keeps the stream open and stores its baton, every
+    /// statement after it reuses that baton, and `COMMIT` / `ROLLBACK` closes
+    /// it. Without this each of `BEGIN`, the writes and `COMMIT` ran on its own
+    /// stream: the writes autocommitted and `COMMIT` failed with "no
+    /// transaction is active", so every `Pool::transaction` answered an error
+    /// after its writes had landed (signup 500, usage gate 500).
+    fn pipeline(&self, sql: &str, params: &[Value]) -> Result<ExecOut, DbError> {
         let mut baton = self.baton.lock().unwrap_or_else(|e| e.into_inner());
+        let keep_open = stream_stays_open(sql, baton.is_some());
         let mut requests = vec![execute_request(sql, params)];
-        if !keep_open && baton.is_none() {
+        if !keep_open {
             requests.push(json::obj([("type", json::s("close"))]));
         }
         let mut body_map = std::collections::BTreeMap::new();
@@ -88,17 +98,31 @@ impl Client {
 
         let url = format!("{}/v2/pipeline", self.url);
         let headers = [("x-namespace", self.namespace.as_str())];
-        let res = httpc::post_json(&url, &headers, &body, TIMEOUT_MS)
-            .map_err(|e| DbError::local(format!("libsql: {e}")))?;
+        // A transport failure leaves the stream unusable: drop the baton so
+        // this connection does not keep sending it, and let the next
+        // statement start a fresh stream.
+        let res = match httpc::post_json(&url, &headers, &body, TIMEOUT_MS) {
+            Ok(res) => res,
+            Err(e) => {
+                *baton = None;
+                return Err(DbError::local(format!("libsql: {e}")));
+            }
+        };
         if !res.ok() {
+            *baton = None;
             return Err(DbError::local(format!(
                 "libsql HTTP {} {}",
                 res.status,
                 res.text()
             )));
         }
-        let parsed = json::parse(&res.body)
-            .map_err(|e| DbError::local(format!("libsql JSON: {e}")))?;
+        let parsed = match json::parse(&res.body) {
+            Ok(parsed) => parsed,
+            Err(e) => {
+                *baton = None;
+                return Err(DbError::local(format!("libsql JSON: {e}")));
+            }
+        };
 
         if keep_open {
             *baton = parsed.get_str("baton").map(str::to_string);
@@ -128,6 +152,26 @@ impl Client {
             .path("response.result")
             .ok_or_else(|| DbError::local("libsql execute missing result"))?;
         Ok(parse_execute(result)?)
+    }
+}
+
+/// Whether the Hrana stream stays open after `sql`.
+///
+/// `in_transaction` is true when a baton from an earlier `BEGIN` is held.
+/// `BEGIN` opens the stream, `COMMIT` / `END` / `ROLLBACK` (but not
+/// `ROLLBACK TO` a savepoint) closes it, and anything else keeps whatever
+/// state it found.
+fn stream_stays_open(sql: &str, in_transaction: bool) -> bool {
+    let words: Vec<String> = sql
+        .split_whitespace()
+        .take(2)
+        .map(str::to_ascii_uppercase)
+        .collect();
+    match words.first().map(String::as_str) {
+        Some("BEGIN") => true,
+        Some("COMMIT") | Some("END") => false,
+        Some("ROLLBACK") => in_transaction && words.get(1).map(String::as_str) == Some("TO"),
+        _ => in_transaction,
     }
 }
 
@@ -219,5 +263,258 @@ fn hrana_value(v: &Json) -> Value {
                 Value::Null
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::stream_stays_open;
+
+    #[test]
+    fn begin_opens_and_commit_or_rollback_closes_the_stream() {
+        assert!(stream_stays_open("BEGIN IMMEDIATE", false));
+        assert!(stream_stays_open("  begin", false));
+        assert!(stream_stays_open("UPDATE Users SET x = 1", true));
+        assert!(!stream_stays_open("COMMIT", true));
+        assert!(!stream_stays_open("END", true));
+        assert!(!stream_stays_open("ROLLBACK", true));
+        assert!(stream_stays_open("ROLLBACK TO sp1", true));
+    }
+
+    #[test]
+    fn statements_outside_a_transaction_close_their_stream() {
+        assert!(!stream_stays_open("SELECT 1", false));
+        assert!(!stream_stays_open("INSERT INTO t VALUES (1)", false));
+        assert!(!stream_stays_open("ROLLBACK", false));
+    }
+}
+/// Transactions against a local Hrana stub that keeps stream state like sqld.
+#[cfg(test)]
+mod hrana_stub_tests {
+    use super::Client;
+    use crate::db::{Pool, Value};
+    use crate::json::{self, Json};
+    use std::collections::HashMap;
+    use std::io::{Read, Write};
+    use std::net::{TcpListener, TcpStream};
+    use std::sync::{Arc, Mutex};
+
+    /// Every statement the stub ran, as (stream id, SQL).
+    type Log = Arc<Mutex<Vec<(u64, String)>>>;
+
+    /// Stream state: id and whether a transaction is open on it.
+    type Streams = HashMap<String, (u64, bool)>;
+
+    /// Start a minimal Hrana v2 `/v2/pipeline` server modelled on sqld.
+    ///
+    /// A request without a baton opens a new stream, `close` ends it (an open
+    /// transaction dies with it), and `COMMIT` / `ROLLBACK` on a stream with no
+    /// open transaction fail with SQLite's message. SQL starting with
+    /// `HTTPFAIL` answers HTTP 500 and forgets the stream.
+    fn spawn_stub() -> (String, Log) {
+        let listener = TcpListener::bind("127.0.0.1:0").expect("bind stub");
+        let url = format!("http://{}", listener.local_addr().expect("stub addr"));
+        let log: Log = Arc::default();
+        let seen = Arc::clone(&log);
+        std::thread::spawn(move || {
+            let mut streams = Streams::new();
+            let mut next_id = 0u64;
+            for conn in listener.incoming() {
+                let Ok(mut conn) = conn else { continue };
+                let Some(body) = read_body(&mut conn) else {
+                    continue;
+                };
+                let (status, reply) = answer(&body, &mut streams, &mut next_id, &seen);
+                let _ = write!(
+                    conn,
+                    "HTTP/1.1 {status}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{reply}",
+                    reply.len()
+                );
+            }
+        });
+        (url, log)
+    }
+
+    /// Read one HTTP request and return its body.
+    fn read_body(conn: &mut TcpStream) -> Option<Vec<u8>> {
+        let mut buf = Vec::new();
+        let mut chunk = [0u8; 4096];
+        let head_end = loop {
+            let n = conn.read(&mut chunk).ok()?;
+            if n == 0 {
+                return None;
+            }
+            buf.extend_from_slice(&chunk[..n]);
+            if let Some(i) = buf.windows(4).position(|w| w == b"\r\n\r\n") {
+                break i + 4;
+            }
+        };
+        let head = String::from_utf8_lossy(&buf[..head_end]).to_ascii_lowercase();
+        let len: usize = head
+            .lines()
+            .find_map(|l| l.strip_prefix("content-length:"))
+            .and_then(|v| v.trim().parse().ok())
+            .unwrap_or(0);
+        while buf.len() < head_end + len {
+            let n = conn.read(&mut chunk).ok()?;
+            if n == 0 {
+                break;
+            }
+            buf.extend_from_slice(&chunk[..n]);
+        }
+        Some(buf[head_end..].to_vec())
+    }
+
+    /// Run one pipeline body against the stub's streams.
+    fn answer(body: &[u8], streams: &mut Streams, next_id: &mut u64, log: &Log) -> (u16, String) {
+        let req = json::parse(body).expect("pipeline JSON");
+        let (id, mut in_tx) = match req.get_str("baton") {
+            Some(b) => match streams.remove(b) {
+                Some(state) => state,
+                None => return (400, r#"{"message":"unknown baton"}"#.to_string()),
+            },
+            None => {
+                *next_id += 1;
+                (*next_id, false)
+            }
+        };
+        let mut results = Vec::new();
+        let mut closed = false;
+        for r in req.get("requests").and_then(Json::as_arr).unwrap_or(&[]) {
+            if r.get_str("type") == Some("close") {
+                closed = true;
+                results.push(r#"{"type":"ok","response":{"type":"close"}}"#.to_string());
+                continue;
+            }
+            let sql = r.path("stmt.sql").and_then(Json::as_str).unwrap_or("");
+            log.lock().unwrap().push((id, sql.to_string()));
+            let first = sql
+                .split_whitespace()
+                .next()
+                .unwrap_or("")
+                .to_ascii_uppercase();
+            if first == "HTTPFAIL" {
+                return (500, r#"{"message":"stream failed"}"#.to_string());
+            }
+            let error = match first.as_str() {
+                "BEGIN" if in_tx => Some("cannot start a transaction within a transaction"),
+                "COMMIT" | "END" if !in_tx => Some("cannot commit - no transaction is active"),
+                "ROLLBACK" if !in_tx => Some("cannot rollback - no transaction is active"),
+                "BEGIN" => {
+                    in_tx = true;
+                    None
+                }
+                "COMMIT" | "END" | "ROLLBACK" => {
+                    in_tx = false;
+                    None
+                }
+                _ => None,
+            };
+            results.push(match error {
+                Some(message) => format!(r#"{{"type":"error","error":{{"message":"{message}"}}}}"#),
+                None => r#"{"type":"ok","response":{"type":"execute","result":{"cols":[],"rows":[],"affected_row_count":1,"last_insert_rowid":null}}}"#.to_string(),
+            });
+        }
+        let baton = if closed {
+            "null".to_string()
+        } else {
+            let b = format!("baton-{id}-{}", log.lock().unwrap().len());
+            streams.insert(b.clone(), (id, in_tx));
+            format!("\"{b}\"")
+        };
+        (
+            200,
+            format!(r#"{{"baton":{baton},"results":[{}]}}"#, results.join(",")),
+        )
+    }
+
+    /// Stream ids the stub saw, in order, for statements matching `pred`.
+    fn streams_for(log: &Log, pred: impl Fn(&str) -> bool) -> Vec<u64> {
+        log.lock()
+            .unwrap()
+            .iter()
+            .filter(|(_, sql)| pred(sql))
+            .map(|(id, _)| *id)
+            .collect()
+    }
+
+    #[test]
+    fn begin_writes_and_commit_share_one_stream_and_commit_succeeds() {
+        let (url, log) = spawn_stub();
+        let client = Client::new(&url, "Test");
+        client.exec("BEGIN IMMEDIATE").expect("begin");
+        client
+            .run("INSERT INTO t VALUES (?)", &[Value::Int(1)])
+            .expect("insert");
+        client
+            .exec("COMMIT")
+            .expect("commit must find the open transaction");
+        client.query("SELECT 1", &[]).expect("select after commit");
+
+        let ids = streams_for(&log, |_| true);
+        assert_eq!(ids.len(), 4);
+        assert!(
+            ids[..3].iter().all(|id| *id == ids[0]),
+            "BEGIN/INSERT/COMMIT split across streams: {ids:?}"
+        );
+        assert_ne!(ids[3], ids[0], "COMMIT must close the transaction stream");
+    }
+
+    #[test]
+    fn rollback_closes_the_transaction_stream() {
+        let (url, log) = spawn_stub();
+        let client = Client::new(&url, "Test");
+        client.exec("BEGIN").expect("begin");
+        client
+            .exec("ROLLBACK")
+            .expect("rollback must find the open transaction");
+        client
+            .query("SELECT 1", &[])
+            .expect("select after rollback");
+        let ids = streams_for(&log, |_| true);
+        assert_eq!(ids[0], ids[1]);
+        assert_ne!(ids[2], ids[0]);
+    }
+
+    #[test]
+    fn an_http_failure_drops_the_baton_so_the_next_statement_starts_fresh() {
+        let (url, log) = spawn_stub();
+        let client = Client::new(&url, "Test");
+        client.exec("BEGIN").expect("begin");
+        assert!(client.exec("HTTPFAIL").is_err());
+        client
+            .query("SELECT 1", &[])
+            .expect("fresh stream after failure");
+        let ids = streams_for(&log, |_| true);
+        assert_ne!(ids[2], ids[0], "a dead baton must not be reused");
+    }
+
+    #[test]
+    fn pool_transaction_commits_over_libsql() {
+        let (url, log) = spawn_stub();
+        let pool = Pool::open_libsql(&url, "Test", 1).expect("open pool");
+        let out = pool.transaction(|db| {
+            db.run(
+                "INSERT INTO Users (email) VALUES (?)",
+                &[Value::Text("x".into())],
+            )?;
+            db.run(
+                "INSERT INTO Auths (email) VALUES (?)",
+                &[Value::Text("x".into())],
+            )?;
+            Ok(())
+        });
+        assert!(out.is_ok(), "Pool::transaction failed: {out:?}");
+        let tx = streams_for(&log, |sql| {
+            sql.starts_with("BEGIN")
+                || sql.starts_with("INSERT INTO Users")
+                || sql.starts_with("INSERT INTO Auths")
+                || sql == "COMMIT"
+        });
+        assert_eq!(tx.len(), 4);
+        assert!(
+            tx.iter().all(|id| *id == tx[0]),
+            "transaction split across streams: {tx:?}"
+        );
     }
 }

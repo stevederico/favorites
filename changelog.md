@@ -1,3 +1,8 @@
+0.23.0
+
+  Fix libSQL transactions
+  Pin base images
+
 0.22.0
 
   Drop analytics code

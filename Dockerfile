@@ -1,4 +1,4 @@
-FROM node:24-bookworm-slim AS frontend
+FROM node:24.22.0-bookworm-slim@sha256:91acba91b842bec0bf7ea6f5e09c644c7ccad72c4996ed9616d861d1c7cd60d4 AS frontend
 
 WORKDIR /app
 COPY package.json package-lock.json ./
@@ -11,7 +11,11 @@ RUN if find /app \( -name '.env' -o -name '.env.*' \) ! -name '.env.example' -pr
     fi
 RUN npm run build
 
-FROM rust:bookworm AS backend
+FROM rust:1.99.1-bookworm@sha256:48b7f435b8fc6378ce43b44f15e3a47fd8919b2825f835c39bd4bd3da50af5b8 AS backend
+
+# Use the image\'s pinned toolchain; rust-toolchain.toml says "stable", which
+# would otherwise make rustup download whatever stable is current.
+ENV RUSTUP_TOOLCHAIN=1.99.1
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
       libsqlite3-dev libcurl4-openssl-dev pkg-config ca-certificates \
@@ -21,7 +25,7 @@ COPY backend/rust-toolchain.toml backend/Cargo.toml backend/Cargo.lock ./
 COPY backend/src ./src
 RUN cargo build --release --locked
 
-FROM debian:bookworm-slim
+FROM debian:bookworm-20261020-slim@sha256:7ff6ba31527b9e336162fa061746c366c4b2032f4d2cff2078bea43f78efe3f8
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
       libsqlite3-0 libcurl4 ca-certificates curl \

@@ -2,7 +2,7 @@
 
 Save places and show them on a map. Live site: [favs.bixbyapps.com](https://favs.bixbyapps.com).
 
-**Version:** 0.19.0
+**Version:** 0.23.0
 
 ## Tech stack
 
