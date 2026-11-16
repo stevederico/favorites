@@ -1,10 +1,10 @@
 // Import necessary React hooks and components
 import { useEffect, useState, useCallback } from 'react';
 import type { ChangeEvent } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { Link, useNavigate } from '@stevederico/skateboard-ui/router';
 import { useFavorites } from '../contexts/FavoritesContext';
 import type { SearchResult } from '../contexts/FavoritesContext';
-import { Search, MapPin, Heart, User, Clock } from 'lucide-react';
+import { Search, MapPin, Heart, User, Clock } from '@stevederico/skateboard-ui/icons';
 import { timestampToString } from '@stevederico/skateboard-ui/Utilities';
 import { getState } from '@stevederico/skateboard-ui/Context';
 

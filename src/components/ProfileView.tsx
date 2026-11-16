@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { X, MapPin } from 'lucide-react';
-import { useParams, Link, useNavigate } from 'react-router';
+import { X, MapPin } from '@stevederico/skateboard-ui/icons';
+import { useParams, Link, useNavigate } from '@stevederico/skateboard-ui/router';
 import Header from '@stevederico/skateboard-ui/Header';
 import { useFavorites } from '../contexts/FavoritesContext';
 import type { Favorite, SearchResult } from '../contexts/FavoritesContext';

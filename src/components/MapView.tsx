@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import type { ChangeEvent } from 'react';
-import { useSearchParams, useParams } from 'react-router';
-import { Search, MapPin } from 'lucide-react';
+import { useSearchParams, useParams } from '@stevederico/skateboard-ui/router';
+import { Search, MapPin } from '@stevederico/skateboard-ui/icons';
 import { createRoot } from 'react-dom/client';
 import { getState } from '@stevederico/skateboard-ui/Context';
 import { useFavorites } from '../contexts/FavoritesContext';

@@ -1,5 +1,4 @@
 import { defineConfig } from 'vite';
-import tailwindcss from '@tailwindcss/vite';
 import path from 'node:path';
 import {
   customLoggerPlugin,
@@ -13,7 +12,6 @@ import {
 
 export default defineConfig({
   plugins: [
-    tailwindcss(),
     customLoggerPlugin(),
     htmlReplacePlugin(),
     dynamicRobotsPlugin(),
@@ -23,8 +21,7 @@ export default defineConfig({
   // JSX comes from tsconfig ("jsx": "react-jsx") via Vite's own transform — no
   // @vitejs/plugin-react-swc, so edits trigger a full reload instead of Fast Refresh.
   resolve: {
-    // react-router resolves through skateboard-ui; dedupe keeps one copy if an app adds it.
-    dedupe: ['react', 'react-dom', 'react-router'],
+    dedupe: ['react', 'react-dom'],
     alias: {
       '@': path.resolve(process.cwd(), './src')
     }
@@ -38,7 +35,6 @@ export default defineConfig({
       'react-dom',
       'react-dom/client',
       'react/jsx-runtime',
-      'react-router',
       'cookie',
       'set-cookie-parser'
     ],

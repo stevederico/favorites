@@ -9,9 +9,9 @@ import {
   CommandEmpty,
   CommandGroup,
   CommandItem,
-} from '@stevederico/skateboard-ui/shadcn/ui/command';
-import { House, Map } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
+} from '@stevederico/skateboard-ui/ui/command';
+import { House, Map } from '@stevederico/skateboard-ui/icons';
+import type { LucideIcon } from '@stevederico/skateboard-ui/icons';
 
 const PAGE_ICONS: Record<string, LucideIcon> = {
   house: House,
